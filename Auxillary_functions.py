@@ -1,4 +1,5 @@
 import logging
+import ast
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -101,6 +102,119 @@ def return_num_journey_prob(df, weekday, year, plots=True):
 
     #return individuals
 
-return_num_journey_prob(df=car_df, weekday=1, year=2023, plots=False)
+#return_num_journey_prob(df=car_df, weekday=1, year=2023, plots=False)
 
 
+def return_journey_seq(df, weekday, year):
+
+    df = df.copy()
+
+    if "TravelWeekDay_B03ID" not in df.columns:
+        raise ValueError(f"'TravelWeekDay_B03ID' not in DataFrame columns. DataFrame columns: {df.columns}")
+
+    if weekday == 1:
+        df = df[df["TravelWeekDay_B03ID"]==1]
+
+    elif weekday == 2:
+        df = df[df["TravelWeekDay_B03ID"]==2]
+
+    else:
+        raise ValueError(f"Weekday is {weekday}. Must be int(1) for weekday or int(2) for weekend ")
+    
+    
+    if not (2002 <= year <= 2023):  # Correct range check
+        raise ValueError(f"Year is {year}. Must be between 2002 and 2023.")
+
+    logging.debug(f"Filtering where year={year}")
+    df = df[df["TravelYear"] == year]
+
+    logging.info("Displaying propotions of different trip types")
+    
+    info = df["TripType"].value_counts(normalize=True).reset_index()
+
+    #1 work
+    #2 other
+    #3 home
+
+    mapping = {(2,3): "other->home",
+            (3,2): "home->other",
+            (3,1): "home->work",
+            (2,2): "other->other",
+            (1,3): "work->home",
+            (1,2): "work->other",
+            (2,1): "other->work"}
+
+    info["TripType_mapped"] = info["TripType"].map(mapping)
+
+    logging.info(info)
+    
+    logging.info("Calculating probabilities of different trip sequences for different trip lengths")
+    logging.debug("Obtaining a trip type for every trip made by every individual on every travel day")
+    g1 = car_df.groupby(["IndividualID", "TravDay", "JourSeq"])[["TripType"]].first()
+    logging.debug(g1.head())
+    logging.debug("Obtaining a list of journey types for each individual on each travel day")
+    g1 = g1.groupby(["IndividualID", "TravDay"])[["TripType"]].agg(list)
+    g1 = g1.reset_index()
+    logging.debug(g1.head())
+
+    logging.debug("Calculating number of trips for each travel day")
+    g1["SumTrips"] = g1["TripType"].apply(lambda x: len(x))
+
+    logging.debug(g1.head())
+
+    cut_off_val = 10
+    logging.info(f"Applying cut off at > {cut_off_val} trips")
+    if cut_off_val > 19:
+        raise ValueError(f"cut-off value is {cut_off_val}. Max possible value is 19. Recommended 10")
+
+    g1 = g1[g1["SumTrips"] <= cut_off_val]
+
+    logging.debug("For Travel Days with no travel leaving empty values")
+
+    # Days 1,2..7 repeated unique individual number of times
+    days = np.tile(np.arange(1,8), len(g1["IndividualID"].unique()))
+    individuals = [i for i in g1["IndividualID"].unique() for _ in range(7)]
+    new_df = pd.DataFrame({"IndividualID": individuals,
+                        "TravDay": days })
+    # Merging on idnividual and days and leaving NaNs for those individuals who did not travel on a given day
+    merged_df = new_df.merge(g1, on=["IndividualID", "TravDay"], how="left")
+    merged_df = merged_df.fillna(0)
+    # Converting to strings for values counts
+    merged_df["TripType"] = merged_df["TripType"].apply(lambda x: str(x))
+
+    logging.debug(merged_df.iloc[5:10,:])
+
+    logging.info(f"There are {len(merged_df["TripType"].unique())} unique trip sequences.")
+
+    logging.debug(f"Finding the probability of every trip sequence for a given number of trips per day")
+    trip_probs = merged_df[["SumTrips", "TripType"]].groupby("SumTrips").value_counts(normalize=True).reset_index()
+    logging.debug(trip_probs.head())
+
+    # Converting string of combinations back to list
+    trip_probs["TripType"] = trip_probs["TripType"].apply(ast.literal_eval)
+
+    logging.debug("Making a dictionary where key is number of trips and values are two lists")
+    logging.debug("first entry is the trip combinations, second entry is their respective probabilities")
+
+    pop_seq_weights = {}
+
+    for trip_length in trip_probs.SumTrips.unique():
+        by_trip_length = trip_probs[trip_probs["SumTrips"] == trip_length]
+        logging.debug(f"Showing head when trip length = {trip_length}")
+        logging.debug(by_trip_length.head())
+        population = list(by_trip_length["TripType"])
+        weights = list(by_trip_length["proportion"])
+        #logging.debug(population)
+        #logging.debug(weights)
+        pop_seq_weights[f"trip_length_{int(trip_length)}"] = [population, weights]
+
+    logging.debug("Showing highest sequence probabilities for trip lengths <=4")
+    for i,(k,v) in enumerate(pop_seq_weights.items()):
+        if i <=4:
+            logging.debug(f"{k}, {v[0][0]}, {v[1][0]}")
+
+    return pop_seq_weights
+
+
+
+return_journey_seq(car_df, 1, 2014)

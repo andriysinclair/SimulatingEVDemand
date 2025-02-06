@@ -1,7 +1,7 @@
 import pandas as pd
 import logging
 from pathlib import Path
-from Auxillary_functions import return_num_journey_prob
+from Auxillary_functions import return_num_journey_prob, return_journey_seq
 import random
 
 # Configure basic logging
@@ -82,6 +82,8 @@ class MobilitySimulator:
 
         p_vector_wd = return_num_journey_prob(df=self.nts_df, weekday=1, year=self.year, plots=False)["p_vec"]
         p_vector_we = return_num_journey_prob(df=self.nts_df, weekday=2, year=self.year, plots=False)["p_vec"]
+        sequence_prob_dict_1 = return_journey_seq(df=self.nts_df, weekday=1, year=self.year)
+        sequence_prob_dict_2 = return_journey_seq(df=self.nts_df, weekday=2, year=self.year)
 
         trip_counts = list(range(0,11))
 
