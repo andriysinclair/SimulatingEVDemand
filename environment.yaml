@@ -1,0 +1,12 @@
+name: EnergyThesis
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - numpy
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - pip:
+    - ipykernel
+    
