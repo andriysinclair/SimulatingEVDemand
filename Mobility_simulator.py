@@ -103,3 +103,6 @@ class MobilitySimulator:
 m = MobilitySimulator(nts_df=df, year=2021)
 
 m.simulate()
+
+
+print(m.mobility_schedule)
