@@ -128,6 +128,10 @@ logging.info("Dropping undefined trip purpouses")
 df_car = df_car[df_car["TripPurpFrom_B01ID"] != 0]
 df_car = df_car[df_car["TripPurpTo_B01ID"] != 0]
 
+logging.info("Making tuples for trip purpose to and from")
+df_car["TripType"] = list(zip(df_car["TripPurpFrom_B01ID"], df_car["TripPurpTo_B01ID"]))
+df_car = df_car.drop(["TripPurpFrom_B01ID", "TripPurpTo_B01ID"], axis=1)
+
 logging.info("Attempting to pickle DataFrame and save to data folder...")
 Data_folder = Path(__file__).resolve().parent / "Data"
 

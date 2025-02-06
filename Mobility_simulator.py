@@ -1,7 +1,7 @@
 import pandas as pd
 import logging
 from pathlib import Path
-from Auxillary_functions import return_num_journey_prob
+from Auxillary_functions import return_num_journey_prob, return_journey_seq
 import random
 
 # Configure basic logging
@@ -23,8 +23,7 @@ class MobilitySimulator:
 
         self.mobility_schedule = pd.DataFrame()
 
-        self.cols_to_use = set(['DayID', 'IndividualID', 'TravDay', 'JourSeq', 'TripPurpFrom_B01ID',
-       'TripPurpTo_B01ID', 'TripStart', 'TripEnd', 'TripDisExSW', 'TravelYear',
+        self.cols_to_use = set(['DayID', 'IndividualID', 'TravDay', 'JourSeq', 'TripType', 'TripStart', 'TripEnd', 'TripDisExSW', 'TravelYear',
        'TravelWeekDay_B03ID'])
 
         self.nts_df = nts_df
@@ -82,10 +81,23 @@ class MobilitySimulator:
 
         p_vector_wd = return_num_journey_prob(df=self.nts_df, weekday=1, year=self.year, plots=False)["p_vec"]
         p_vector_we = return_num_journey_prob(df=self.nts_df, weekday=2, year=self.year, plots=False)["p_vec"]
+        sequence_prob_dict_1 = return_journey_seq(df=self.nts_df, weekday=1, year=self.year)
+        sequence_prob_dict_2 = return_journey_seq(df=self.nts_df, weekday=2, year=self.year)
 
         trip_counts = list(range(0,11))
 
         ts["num_trips"] = ts["we_wd"].apply(lambda x: random.choices(trip_counts, p_vector_wd)[0] if x == 1 else random.choices(trip_counts, p_vector_we)[0])
+
+        ts["trip_seqs"] = ts.apply(
+            lambda row: random.choices(
+                sequence_prob_dict_1[f"trip_length_{row['num_trips']}"][0],  # List of sequences
+                weights=sequence_prob_dict_1[f"trip_length_{row['num_trips']}"][1]  # Corresponding probabilities
+            )[0] if row["we_wd"] == 1 else random.choices(
+                sequence_prob_dict_2[f"trip_length_{row['num_trips']}"][0],
+                weights=sequence_prob_dict_2[f"trip_length_{row['num_trips']}"][1]
+            )[0],
+            axis=1  # Apply row-wise
+        )
 
         logging.debug(f"Head of time series with randomly generated trip numbs: {ts}")
 
@@ -103,3 +115,6 @@ class MobilitySimulator:
 m = MobilitySimulator(nts_df=df, year=2021)
 
 m.simulate()
+
+
+print(m.mobility_schedule)
