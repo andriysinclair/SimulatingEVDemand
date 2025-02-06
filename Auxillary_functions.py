@@ -3,6 +3,7 @@ import ast
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from copulas.multivariate import GaussianMultivariate
 
 # Configure basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
@@ -10,6 +11,32 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 # Importing dataframe for experimentation
 
 car_df = pd.read_pickle("/home/trapfishscott/Cambridge24.25/Energy_thesis/Data/df_car.pkl")
+
+def filter_df(df, weekday, year):
+
+    df = df.copy()
+
+    if "TravelWeekDay_B03ID" not in df.columns:
+        raise ValueError(f"'TravelWeekDay_B03ID' not in DataFrame columns. DataFrame columns: {df.columns}")
+
+    if weekday == 1:
+        df = df[df["TravelWeekDay_B03ID"]==1]
+
+    elif weekday == 2:
+        df = df[df["TravelWeekDay_B03ID"]==2]
+
+    else:
+        raise ValueError(f"Weekday is {weekday}. Must be int(1) for weekday or int(2) for weekend ")
+    
+    
+    if not (2002 <= year <= 2023):  # Correct range check
+        raise ValueError(f"Year is {year}. Must be between 2002 and 2023.")
+
+    logging.debug(f"Filtering where year={year}")
+
+    df = df[df["TravelYear"] == year]
+
+    return df
 
 def return_num_journey_prob(df, weekday, year, plots=True):
     df = df.copy()
@@ -215,6 +242,99 @@ def return_journey_seq(df, weekday, year):
 
     return pop_seq_weights
 
+def return_copula(df, weekday, year, plots=False):
 
+    df = df.copy()
+
+    df = filter_df(df, weekday, year)
+
+    if plots is True:
+        # Work trips
+        plt.figure(figsize=(12,5))
+        plt.subplot(1,2,1)
+        plt.title("A Histogram of Work Trip Start Times")
+        plt.grid()
+        work_home = df[df["TripType"] == (1,3)]
+        home_work = df[df["TripType"] == (3,1)]
+        plt.hist(work_home["TripStart"], bins=50, label="work->home")
+        plt.hist(home_work["TripStart"], bins=50, label="home->work")
+        plt.legend()
+        
+        
+        plt.subplot(1,2,2)
+        plt.title("A Histogram of Work Trip Distance Travelled")
+        plt.grid()
+        plt.hist(work_home["TripDisExSW"], bins=50, range=(0,60))
+
+        plt.tight_layout()
+        plt.show()
+
+        # Home other trips
+        plt.figure(figsize=(12,5))
+        plt.subplot(1,2,1)
+        plt.title("A Histogram of Home->Other Trip Start Times")
+        plt.grid()
+        home_other = df[df["TripType"] == (3,2)]
+        plt.hist(home_other["TripStart"], bins=50)
+            
+        plt.subplot(1,2,2)
+        plt.title("A Histogram of Home->Other trip Distance Travelled")
+        plt.grid()
+        plt.hist(home_other["TripDisExSW"], bins=50, range=(0,60))
+
+        plt.tight_layout()
+        plt.show()
+
+    # Copulas
+    logging.info("Using Copulas to generate multivariate distributions for continous variables")
+
+    copulas = {}
+
+    for combo in df["TripType"].unique():
+        dist = GaussianMultivariate()
+        to_copula = df[df["TripType"] == combo][["TripStart", "TripEnd", "TripDisExSW"]]
+        # Dropping nans
+        to_copula = to_copula.dropna(axis=0)
+        logging.debug(to_copula.head())
+
+        logging.debug("Taking 10000 randomly drawn samples or otherwise copula crashes")
+        logging.debug(f"len of df before sampling: {len(to_copula)}")
+
+        if len(to_copula) > 10000:
+            to_copula = to_copula.sample(n=10000)
+
+        logging.debug(f"len of df after sampling: {len(to_copula)}")   
+
+        dist.fit(to_copula)
+        copulas[f"copula_for_{combo}"] = dist
+        logging.info(f"Copula for combo: {combo} is complete!")
+             
+
+    return
+
+
+#c = return_trip_start_end(df=car_df, weekday=1, year=2014, plots=False)
 
 #return_journey_seq(car_df, 1, 2014)
+
+def gen_cont_seq(row, copula_dict):
+    start_end_dis = []
+    for i,seq in enumerate(row["trip_seqs"]):
+        while True:
+            copula_samp = np.round(copula_dict[f"copula_for_{seq}"].sample(1).to_numpy(), 2).flatten()
+            # All entries are negative and trip end is greater than trip start
+            if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]):
+                break
+
+            start_end_dis.append(copula_samp)
+
+        if i>=1:
+            while True:
+                copula_samp = np.round(copula_dict[f"copula_for_{seq}"].sample(1).to_numpy(), 2).flatten()
+                # All entries are negative and trip end is greater than trip start and next trip trip start is greater than last trips trip end
+                if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and (start_end_dis[i][0] > start_end_dis[i-1][1]):
+                    break
+
+                start_end_dis.append(copula_samp)
+
+    return start_end_dis

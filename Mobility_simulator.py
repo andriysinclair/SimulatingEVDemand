@@ -1,7 +1,7 @@
 import pandas as pd
 import logging
 from pathlib import Path
-from Auxillary_functions import return_num_journey_prob, return_journey_seq
+from Auxillary_functions import return_num_journey_prob, return_journey_seq, return_copula, gen_cont_seq
 import random
 
 # Configure basic logging
@@ -110,11 +110,21 @@ class MobilitySimulator:
         logging.info(f"Percentage of num_trips (wd) in new series: {perc_counts_wd}")
         logging.info(f"Percentage of num_trips (we) in new series: {perc_counts_we}")
 
+        #logging.debug("Drawing continous values from a copula")
+        #copulas_wd = return_copula(df=self.nts_df, weekday=1, year=self.year)
+        #copulas_we = return_copula(df=self.nts_df, weekday=2, year=self.year)
+
+        #ts["start_end_distance"] = ts.apply(lambda row: gen_cont_seq(row=row, copula_dict=copulas_wd))
+
         self.mobility_schedule = ts
 
-m = MobilitySimulator(nts_df=df, year=2021)
-
-m.simulate()
 
 
-print(m.mobility_schedule)
+
+
+#m = MobilitySimulator(nts_df=df, year=2021)
+
+#m.simulate()
+
+
+#print(m.mobility_schedule)
