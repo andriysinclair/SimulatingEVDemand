@@ -310,7 +310,7 @@ def return_copula(df, weekday, year, plots=False):
         logging.info(f"Copula for combo: {combo} is complete!")
              
 
-    return
+    return copulas
 
 
 #c = return_trip_start_end(df=car_df, weekday=1, year=2014, plots=False)
