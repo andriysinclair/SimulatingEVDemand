@@ -39,6 +39,10 @@ def filter_df(df, weekday, year):
     return df
 
 def return_num_journey_prob(df, weekday, year, plots=True):
+
+    df = df.copy()
+
+    '''
     df = df.copy()
     plt.style.use("ggplot")
 
@@ -62,6 +66,10 @@ def return_num_journey_prob(df, weekday, year, plots=True):
 
     logging.debug(f"Filtering where year={year}")
     df = df[df["TravelYear"] == year]
+
+    ''' # Delete when I know that the filter function works
+
+    df = filter_df(df, weekday, year)
     
     x = df.groupby(["IndividualID", "TravDay"]).count()["JourSeq"]
     logging.debug(f"Counts of Individual Car Journeys by travel day: {x.head(10)}")
@@ -136,6 +144,10 @@ def return_journey_seq(df, weekday, year):
 
     df = df.copy()
 
+    '''
+
+    df = df.copy()
+
     if "TravelWeekDay_B03ID" not in df.columns:
         raise ValueError(f"'TravelWeekDay_B03ID' not in DataFrame columns. DataFrame columns: {df.columns}")
 
@@ -154,6 +166,10 @@ def return_journey_seq(df, weekday, year):
 
     logging.debug(f"Filtering where year={year}")
     df = df[df["TravelYear"] == year]
+
+    ''' #TODO Delete once I know function works
+
+    df = filter_df(df,weekday, year)
 
     logging.info("Displaying propotions of different trip types")
     
@@ -248,6 +264,8 @@ def return_copula(df, weekday, year, plots=False):
 
     df = filter_df(df, weekday, year)
 
+    cut_off = 10
+
     if plots is True:
         # Work trips
         plt.figure(figsize=(12,5))
@@ -288,11 +306,25 @@ def return_copula(df, weekday, year, plots=False):
     # Copulas
     logging.info("Using Copulas to generate multivariate distributions for continous variables")
 
+    logging.debug("Creating column with 'JourSeq' 'TripType' pairs")
+  
+    # Making all journeys > 10 (cut-off) value == 10
+
+    df["combos"] = [list(x) for x in list(zip(df["JourSeq"], df["TripType"]))]
+
+    # All possible combos of "JourSeq" and "TripType"
+
+    df["combos"] = df["combos"].apply(lambda x: [cut_off  if x[0] > cut_off else x[0]] + list(x[1:]))
+
+    # Converting back to a tuple
+
+    df["combos"] = df["combos"].apply(tuple)
+
     copulas = {}
 
-    for combo in df["TripType"].unique():
+    for combo in df["combos"].unique():
         dist = GaussianMultivariate()
-        to_copula = df[df["TripType"] == combo][["TripStart", "TripEnd", "TripDisExSW"]]
+        to_copula = df[df["combos"] == combo][["TripStart", "TripEnd", "TripDisExSW"]]
         # Dropping nans
         to_copula = to_copula.dropna(axis=0)
         logging.debug(to_copula.head())
@@ -311,7 +343,6 @@ def return_copula(df, weekday, year, plots=False):
              
 
     return copulas
-
 
 #c = return_trip_start_end(df=car_df, weekday=1, year=2014, plots=False)
 
