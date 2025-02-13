@@ -42,33 +42,6 @@ def return_num_journey_prob(df, weekday, year, plots=True):
 
     df = df.copy()
 
-    '''
-    df = df.copy()
-    plt.style.use("ggplot")
-
-    if "TravelWeekDay_B03ID" not in df.columns:
-        raise ValueError(f"'TravelWeekDay_B03ID' not in DataFrame columns. DataFrame columns: {df.columns}")
-
-    if weekday == 1:
-        df = df[df["TravelWeekDay_B03ID"]==1]
-
-    elif weekday == 2:
-        df = df[df["TravelWeekDay_B03ID"]==2]
-
-    else:
-        raise ValueError(f"Weekday is {weekday}. Must be int(1) for weekday or int(2) for weekend ")
-    
-    if plots not in {True, False}:
-        raise ValueError(f"plots is {plots}. Must == True or False")
-    
-    if not (2002 <= year <= 2023):  # Correct range check
-        raise ValueError(f"Year is {year}. Must be between 2002 and 2023.")
-
-    logging.debug(f"Filtering where year={year}")
-    df = df[df["TravelYear"] == year]
-
-    ''' # Delete when I know that the filter function works
-
     df = filter_df(df, weekday, year)
     
     x = df.groupby(["IndividualID", "TravDay"]).count()["JourSeq"]
@@ -143,31 +116,6 @@ def return_num_journey_prob(df, weekday, year, plots=True):
 def return_journey_seq(df, weekday, year):
 
     df = df.copy()
-
-    '''
-
-    df = df.copy()
-
-    if "TravelWeekDay_B03ID" not in df.columns:
-        raise ValueError(f"'TravelWeekDay_B03ID' not in DataFrame columns. DataFrame columns: {df.columns}")
-
-    if weekday == 1:
-        df = df[df["TravelWeekDay_B03ID"]==1]
-
-    elif weekday == 2:
-        df = df[df["TravelWeekDay_B03ID"]==2]
-
-    else:
-        raise ValueError(f"Weekday is {weekday}. Must be int(1) for weekday or int(2) for weekend ")
-    
-    
-    if not (2002 <= year <= 2023):  # Correct range check
-        raise ValueError(f"Year is {year}. Must be between 2002 and 2023.")
-
-    logging.debug(f"Filtering where year={year}")
-    df = df[df["TravelYear"] == year]
-
-    ''' #TODO Delete once I know function works
 
     df = filter_df(df,weekday, year)
 
@@ -258,13 +206,29 @@ def return_journey_seq(df, weekday, year):
 
     return pop_seq_weights
 
-def return_copula(df, weekday, year, plots=False):
+def return_copula(df, weekday, year, trip_cut_off, plots=False):
+
+    """
+     Generates a copula multivariate distribution for trip_start, trip_end and distance based on a trip number and trip type
+
+    args:
+        df(pd.DataFrame): Original travel dataframe from which to fit copula
+        weekday(int): 1 for weekday and 2 for weekend values only#
+        year(int): the year for which to filter the data
+        trip_cut_off(int): Max trip length, any trips longer than this get assigned the max trip length
+
+    Returns:
+        dict: (trip_number, (trip type)) as key and fitted copula as value
+    """    
 
     df = df.copy()
 
     df = filter_df(df, weekday, year)
 
-    cut_off = 10
+    # Ensuring df is correctly filtered
+
+    logging.debug(f"unique weekday: {df.head()["TravelWeekDay_B03ID"]}")
+    logging.debug(f"Unique year: {df.head()["TravelYear"]}")
 
     if plots is True:
         # Work trips
@@ -314,23 +278,44 @@ def return_copula(df, weekday, year, plots=False):
 
     # All possible combos of "JourSeq" and "TripType"
 
-    df["combos"] = df["combos"].apply(lambda x: [cut_off  if x[0] > cut_off else x[0]] + list(x[1:]))
+    df["combos"] = df["combos"].apply(lambda x: [trip_cut_off  if x[0] > trip_cut_off else x[0]] + list(x[1:]))
 
     # Converting back to a tuple
 
     df["combos"] = df["combos"].apply(tuple)
 
+    # Dropping Nans
+    df = df.dropna(axis=0)
+
+    logging.debug("All unique combos ...")
+    logging.debug(f"{df["combos"].unique()}")
+
+    # Using a general distribution for very rare journey sequences.
+
+    general_dist = GaussianMultivariate()
+    general_to_copula = df[["TripStart", "TripEnd", "TripDisExSW"]]
+    general_to_copula = general_to_copula.sample(n=10000)
+    general_dist.fit(general_to_copula)
+
     copulas = {}
 
     for combo in df["combos"].unique():
+        logging.debug(f"Fitting combo: {combo}")
         dist = GaussianMultivariate()
         to_copula = df[df["combos"] == combo][["TripStart", "TripEnd", "TripDisExSW"]]
+        logging.debug("Head of to_copulas...")
+        logging.debug(f"{to_copula.head()}")
         # Dropping nans
-        to_copula = to_copula.dropna(axis=0)
-        logging.debug(to_copula.head())
+        #to_copula = to_copula.dropna(axis=0)
+        logging.debug("Having dropped nans")
+        logging.debug(f"{to_copula.head()}")
 
         logging.debug("Taking 10000 randomly drawn samples or otherwise copula crashes")
         logging.debug(f"len of df before sampling: {len(to_copula)}")
+
+        if len(to_copula) < 20:
+            logging.debug("Small sample size, Falling back to general distribution")
+            copulas[combo] = general_dist
 
         if len(to_copula) > 10000:
             to_copula = to_copula.sample(n=10000)
@@ -338,34 +323,134 @@ def return_copula(df, weekday, year, plots=False):
         logging.debug(f"len of df after sampling: {len(to_copula)}")   
 
         dist.fit(to_copula)
-        copulas[f"copula_for_{combo}"] = dist
-        logging.info(f"Copula for combo: {combo} is complete!")
-             
+        copulas[combo] = dist
+        logging.info(f"{combo} is complete!")
 
+        logging.debug("Adding general distribution")
+
+    copulas["general_dist"] = general_dist
+             
     return copulas
 
 #c = return_trip_start_end(df=car_df, weekday=1, year=2014, plots=False)
 
 #return_journey_seq(car_df, 1, 2014)
 
-def gen_cont_seq(row, copula_dict):
-    start_end_dis = []
-    for i,seq in enumerate(row["trip_seqs"]):
+def gen_cont_seq(row, copula_dicts, restart_threshold=300):
+
+    """ 
+
+    Generates a (start_time, end_time, trip_distance) for every individual based on the day of the week, his trip sequence
+    and the number of trips he did that day. Uses a copula to simulate continuous variables based on categorical distributions
+    of number of trips per day, day of the week and trip sequence. Copula's are truncated as certain conditions must be satisfied. 
+    I.E. all values must be positive, end time must be after start time and the start time of the next trip must be after the end time
+    of the previous trip. The algorithm can get stuck if for example an individual has many trips and an early is randomly sampled at a 
+    very late time. To circumvent this a restart threshold is set to restart the algorithm in the case that a solution is not found.
+    With the restart threshold set to 300 it takes around a mimute to generate a year of travel for one individual.
+
+    Parameters:
+        row (pd.Series): A row of the a dataframe containing [["Year","we_wd","trip_num","trip_seqs"]], these should have been generated 
+                         previously in .simulate()
+
+        copula_dicts(list): A list of copula dictionaries, the first item MUST be the weekday copula nd the second item MUST be the weekend copula
+
+        restart_threshold(int): The number of iterations before the search for a suitable trip_start, trip_end, distance combo is found for each
+                                journey in an individual's sequence.
+
+    Returns:
+        list: a list of lists containing start_time, end_time, trip_distance
+        
+    """    
+    logging.info(f"\n{row}")
+    
+    if isinstance(row["trip_seqs"], list):
+
+        if len(copula_dicts) != 2 or type(copula_dicts) is not list:
+            raise ValueError("copula_dicts must a be a list of length 2")
+
+        if row["we_wd"] == 1:
+            copula_dict = copula_dicts[0]
+
+        if row["we_wd"] == 2:
+            copula_dict = copula_dicts[1]
+
+        logging.debug("A list of copula dict keys")
+        logging.debug(f"{list(copula_dict.keys())}")
+
+        restart_attempts = 0
+
         while True:
-            copula_samp = np.round(copula_dict[f"copula_for_{seq}"].sample(1).to_numpy(), 2).flatten()
-            # All entries are negative and trip end is greater than trip start
-            if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]):
-                break
 
-            start_end_dis.append(copula_samp)
+            start_end_dis = []
 
-        if i>=1:
-            while True:
-                copula_samp = np.round(copula_dict[f"copula_for_{seq}"].sample(1).to_numpy(), 2).flatten()
-                # All entries are negative and trip end is greater than trip start and next trip trip start is greater than last trips trip end
-                if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and (start_end_dis[i][0] > start_end_dis[i-1][1]):
-                    break
+            copula_matches =  [(i+1, row["trip_seqs"][i]) for i in range(row["num_trips"])]
 
-                start_end_dis.append(copula_samp)
+            logging.debug(f"Copula matches for this row: {copula_matches}")
 
-    return start_end_dis
+            restart_flag = False
+
+            for i,match in enumerate(copula_matches):
+
+                if copula_dict.get(match, None) is None:
+                    logging.debug(f"Match: {match} not found in copula dict. Falling back to general distribution")
+
+                copula_obj = copula_dict.get(match, copula_dict.get("general_dist"))
+
+                copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
+
+                search_iterations = 0
+
+
+                if i == 0:
+                    logging.info(f"i: {i}: seq: {match}")
+                    while True:
+
+                        copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
+                        #print(f"copula_samp: {copula_samp}")
+                        # All entries are negative and trip end is greater than trip start
+
+                        #search_iterations += 1
+                        #print(f"\rSearch Iterations: {search_iterations}", end="", flush=True)
+
+                        if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]):
+                            print("")
+                            break
+
+                    start_end_dis.append(copula_samp)
+
+                    logging.info(f"current output: {start_end_dis}\n")
+
+                else:
+                    while True:
+
+                        copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
+
+                        #print(f"copula_samp: {copula_samp}")
+                        # All entries are negative and trip end is greater than trip start and next trip trip start is greater than last trips trip end
+
+                        search_iterations += 1
+                        print(f"\rSearch Iterations: {search_iterations} | Restart Attempts: {restart_attempts}", end="", flush=True)
+
+                        if search_iterations == restart_threshold:
+                            logging.info("\nThreshold exceeded! Restarting entire sequence...")
+                            restart_attempts += 1
+                            restart_flag = True
+                            break  # Break inner loop to restart
+
+                        if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and (copula_samp[0] > start_end_dis[-1][1]):
+                            print("")
+                            break
+
+                    if restart_flag:
+                        break
+
+                    start_end_dis.append(copula_samp)
+
+                    logging.info(f"current output: {start_end_dis}\n")
+
+            return start_end_dis
+        
+    else:
+        return 0
+
+
