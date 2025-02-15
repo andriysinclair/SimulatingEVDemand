@@ -19,10 +19,12 @@ tools = str(Path(__file__).resolve().parent / "Tools")
 class MOBSIM(MobilitySimulator):
 
     def __init__(self, year):
-
+        super().__init__(year)
         self._set_params(year=year)
 
     def _set_params(self, year, tools_folder=tools):
+
+        self.year = year
 
         tools_dict_path = tools_folder + "/tools.pkl"
 

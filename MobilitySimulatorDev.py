@@ -42,36 +42,23 @@ logging.info(f"Tools folder: {tools}")
 
 class MobilitySimulator:
 
-    def __init__(self, nts_df, year, trip_cut_off):
+    def __init__(self, year):
 
         self.mobility_schedule = pd.DataFrame()
-
-        self.cols_to_use = set(['DayID', 'IndividualID', 'TravDay', 'JourSeq', 'TripType', 'TripStart', 'TripEnd', 'TripDisExSW', 'TravelYear',
-       'TravelWeekDay_B03ID'])
-
-        self.nts_df = nts_df
-
-        if not isinstance(nts_df, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got a {type(nts_df)} instead.")
-        
-        col_similarity = len(set(nts_df.columns) -  set(self.cols_to_use))
-
-        if  col_similarity != 0:
-            logging.error(f"There are {col_similarity} unknown columns")
-            raise ValueError(f"DataFrame columns: {nts_df.columns}. Expected: {self.cols_to_use}. Unknown columns: {set(nts_df.columns) -  set(self.cols_to_use)}")
-
-        logging.debug(f"Head of nts_df: {nts_df.head()}")
 
         self.year = year
 
         if year not in list(range(2002,2025)) and type(year)!=int:
             raise ValueError(f"year parameter: {year}, of type: {type(year)}. Must be in the range: 2002 <= year <= 2024 and of type int")
+                
+        self.cols_to_use = set(['DayID', 'IndividualID', 'TravDay', 'JourSeq', 'TripType', 'TripStart', 'TripEnd', 'TripDisExSW', 'TravelYear',
+       'TravelWeekDay_B03ID'])
         
-        self.trip_cut_off = trip_cut_off
-
-        if trip_cut_off not in range(5,16):
-            raise ValueError(f"trip_cut_off must be between 5 and 15. It is {trip_cut_off}")
+        self.trip_cut_off = 10 # A value under 15 is recommended
         
+        if self.trip_cut_off not in range(5,16):
+            raise ValueError(f"trip_cut_off must be between 5 and 15. It is {self.trip_cut_off}")
+                
         # Storing all tools needed to simulate data for final user (probabilities, copulas etc...)
 
         self.num_journey_p_vector_we = None
@@ -83,7 +70,7 @@ class MobilitySimulator:
         self.copulas_we = None
         self.copulas_wd = None
 
-    def gen_ts(self):
+    def _gen_ts(self):
         
         ts = pd.date_range(start=f"{self.year}-01-01", end=f"{self.year+1}-01-01")
 
@@ -111,19 +98,55 @@ class MobilitySimulator:
 
         logging.debug(f"Head of mobility_schedule: {self.mobility_schedule}")
     
-    def get_num_journey_p_vector(self):
-        self.num_journey_p_vector_wd = return_num_journey_prob(df=self.nts_df, weekday=1, year=self.year, plots=False)["p_vec"]
-        self.num_journey_p_vector_wd = return_num_journey_prob(df=self.nts_df, weekday=2, year=self.year, plots=False)["p_vec"]
+    def _get_num_journey_p_vector(self, nts_df):
 
-    def gen_jour_seq_p_vector(self):
-        self.jour_seq_p_vector_wd = return_journey_seq(df=self.nts_df, weekday=1, year=self.year)
-        self.jour_seq_p_vector_we = return_journey_seq(df=self.nts_df, weekday=2, year=self.year)
+        if not isinstance(nts_df, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got a {type(nts_df)} instead.")
+        
+        col_similarity = len(set(nts_df.columns) -  set(self.cols_to_use))
 
-    def gen_copulas(self):
-        self.copulas_wd = return_copula(df=self.nts_df, weekday=1, year=self.year, trip_cut_off=10)
-        self.copulas_we = return_copula(df=self.nts_df, weekday=2, year=self.year, trip_cut_off=10)
+        if  col_similarity != 0:
+            logging.error(f"There are {col_similarity} unknown columns")
+            raise ValueError(f"DataFrame columns: {nts_df.columns}. Expected: {self.cols_to_use}. Unknown columns: {set(nts_df.columns) -  set(self.cols_to_use)}")
 
-    def fit_tools(self, tools_folder):
+        logging.debug(f"Head of nts_df: {nts_df.head()}")
+        self.num_journey_p_vector_wd = return_num_journey_prob(df=nts_df, weekday=1, year=self.year, plots=False)["p_vec"]
+        self.num_journey_p_vector_wd = return_num_journey_prob(df=nts_df, weekday=2, year=self.year, plots=False)["p_vec"]
+
+    def _gen_jour_seq_p_vector(self, nts_df):
+
+        if not isinstance(nts_df, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got a {type(nts_df)} instead.")
+        
+        col_similarity = len(set(nts_df.columns) -  set(self.cols_to_use))
+
+        if  col_similarity != 0:
+            logging.error(f"There are {col_similarity} unknown columns")
+            raise ValueError(f"DataFrame columns: {nts_df.columns}. Expected: {self.cols_to_use}. Unknown columns: {set(nts_df.columns) -  set(self.cols_to_use)}")
+
+        logging.debug(f"Head of nts_df: {nts_df.head()}")
+
+        self.jour_seq_p_vector_wd = return_journey_seq(df=nts_df, weekday=1, year=self.year)
+        self.jour_seq_p_vector_we = return_journey_seq(df=nts_df, weekday=2, year=self.year)
+
+    def _gen_copulas(self, nts_df):
+
+        if not isinstance(nts_df, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got a {type(nts_df)} instead.")
+        
+        col_similarity = len(set(nts_df.columns) -  set(self.cols_to_use))
+
+        if  col_similarity != 0:
+            logging.error(f"There are {col_similarity} unknown columns")
+            raise ValueError(f"DataFrame columns: {nts_df.columns}. Expected: {self.cols_to_use}. Unknown columns: {set(nts_df.columns) -  set(self.cols_to_use)}")
+
+        logging.debug(f"Head of nts_df: {nts_df.head()}")
+
+        self.copulas_wd = return_copula(df=nts_df, weekday=1, year=self.year, trip_cut_off=self.trip_cut_off)
+        self.copulas_we = return_copula(df=nts_df, weekday=2, year=self.year, trip_cut_off=self.trip_cut_off)
+
+    def _fit_tools(self, tools_folder):
+
         self.get_num_journey_p_vector()
         self.gen_jour_seq_p_vector()
         self.gen_copulas()
@@ -182,7 +205,7 @@ class MobilitySimulator:
 
         # Generate TS
 
-        self.gen_ts()
+        self._gen_ts()
 
         # Generate num trips
 
@@ -213,6 +236,7 @@ class MobilitySimulator:
     
 # Quick loop to save all tools for every year
 
+'''
 for year in range(2005,2025):
 
     m = MobilitySimulator(nts_df=df, year=year, trip_cut_off=10)
@@ -223,3 +247,4 @@ for year in range(2005,2025):
 
 
 #print(m.mobility_schedule)
+'''
