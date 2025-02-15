@@ -6,3 +6,6 @@ OMOD/
 
 # Ignore everything in Data except df_car.pkl
 Data/
+
+# debug logs
+logs/
