@@ -370,7 +370,8 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
         list: a list of lists containing start_time, end_time, trip_distance
         
     """    
-    logging.info(f"\n{row}")
+    logging.debug(f"\n Obtaining values for...")
+    logging.debug(f"{row}")
     
     if isinstance(row["trip_seqs"], list):
 
@@ -411,7 +412,7 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
 
 
                 if i == 0:
-                    logging.info(f"i: {i}: seq: {match}")
+                    logging.debug(f"i: {i}: seq: {match}")
                     while True:
 
                         copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
@@ -422,12 +423,11 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
                         #print(f"\rSearch Iterations: {search_iterations}", end="", flush=True)
 
                         if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]):
-                            print("")
                             break
 
                     start_end_dis.append(copula_samp)
 
-                    logging.info(f"current output: {start_end_dis}\n")
+                    logging.debug(f"current output: {start_end_dis}\n")
 
                 else:
                     while True:
@@ -438,16 +438,16 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
                         # All entries are negative and trip end is greater than trip start and next trip trip start is greater than last trips trip end
 
                         search_iterations += 1
-                        print(f"\rSearch Iterations: {search_iterations} | Restart Attempts: {restart_attempts}", end="", flush=True)
+                        #print(f"\rSearch Iterations: {search_iterations} | Restart Attempts: {restart_attempts}", end="", flush=True)
 
                         if search_iterations == restart_threshold:
                             logging.info("\nThreshold exceeded! Restarting entire sequence...")
                             restart_attempts += 1
+                            logging.info(f"Restart attempts: {restart_attempts}")
                             restart_flag = True
                             break  # Break inner loop to restart
 
                         if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and (copula_samp[0] > start_end_dis[-1][1]):
-                            print("")
                             break
 
                     if restart_flag:
@@ -455,11 +455,13 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
 
                     start_end_dis.append(copula_samp)
 
-                    logging.info(f"current output: {start_end_dis}\n")
+                    logging.debug(f"current output: {start_end_dis}\n")
 
+            logging.info("Row completed! \n")
             return start_end_dis
         
     else:
+        logging.info("Row completed! \n")
         return 0
 
 

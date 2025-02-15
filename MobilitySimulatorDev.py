@@ -70,9 +70,16 @@ class MobilitySimulator:
         self.copulas_we = None
         self.copulas_wd = None
 
-    def _gen_ts(self):
-        
-        ts = pd.date_range(start=f"{self.year}-01-01", end=f"{self.year+1}-01-01")
+    def _gen_ts(self, start_month, start_day, end_month, end_day):
+
+        try:
+            ts = pd.date_range(start=f"{self.year}-{start_month}-{start_day}", end=f"{self.year}-{end_month}-{end_day}")
+
+        except ValueError:
+            logging.info("Please check your date logic. start_month/start_day must come before end_month/end_day")
+            logging.info("A real date must be chosen")
+            logging.info(f"Your inputs, start_month: {start_month}. start_day: {start_day}")
+            logging.info(f"end_month: {start_month}. end_day: {start_day}")
 
         logging.debug(f"Length of time series: {len(ts)}")
         logging.debug(f"First value: {ts[0]}")
@@ -197,7 +204,7 @@ class MobilitySimulator:
 
             logging.info(f"Tools for {self.year} Saved!")
 
-    def simulate(self):
+    def simulate(self, start_month, start_day, end_month, end_day):
 
         # Start Fresh
 
@@ -205,7 +212,7 @@ class MobilitySimulator:
 
         # Generate TS
 
-        self._gen_ts()
+        self._gen_ts(start_month, start_day, end_month, end_day)
 
         # Generate num trips
 
