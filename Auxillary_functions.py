@@ -206,7 +206,7 @@ def return_journey_seq(df, weekday, year):
 
     return pop_seq_weights
 
-def return_copula(df, weekday, year, trip_cut_off, plots=False):
+def return_copula(df, weekday, year, trip_cut_off, rare_threshold = 100, plots=False):
 
     """
      Generates a copula multivariate distribution for trip_start, trip_end and distance based on a trip number and trip type
@@ -287,15 +287,22 @@ def return_copula(df, weekday, year, trip_cut_off, plots=False):
     # Dropping Nans
     df = df.dropna(axis=0)
 
+    ## Assign all rare combos to (999, (999,999)) dist
+
+    # Obtaining calue counts
+    combo_val_counts = df["combos"].value_counts()
+
+    df["combos"] = df["combos"].map(lambda x: x if combo_val_counts[x] > rare_threshold else (999,(999,999)))
+
     logging.debug("All unique combos ...")
     logging.debug(f"{df["combos"].unique()}")
 
     # Using a general distribution for very rare journey sequences.
 
-    general_dist = GaussianMultivariate()
-    general_to_copula = df[["TripStart", "TripEnd", "TripDisExSW"]]
-    general_to_copula = general_to_copula.sample(n=10000)
-    general_dist.fit(general_to_copula)
+    #general_dist = GaussianMultivariate()
+    #general_to_copula = df[["TripStart", "TripEnd", "TripDisExSW"]]
+    #general_to_copula = general_to_copula.sample(n=10000)
+    #general_dist.fit(general_to_copula)
 
     copulas = {}
 
@@ -313,9 +320,11 @@ def return_copula(df, weekday, year, trip_cut_off, plots=False):
         logging.debug("Taking 10000 randomly drawn samples or otherwise copula crashes")
         logging.debug(f"len of df before sampling: {len(to_copula)}")
 
+        '''
         if len(to_copula) < 20:
             logging.debug("Small sample size, Falling back to general distribution")
             copulas[combo] = general_dist
+        '''
 
         if len(to_copula) > 10000:
             to_copula = to_copula.sample(n=10000)
@@ -328,7 +337,7 @@ def return_copula(df, weekday, year, trip_cut_off, plots=False):
 
         logging.debug("Adding general distribution")
 
-    copulas["general_dist"] = general_dist
+    #copulas["general_dist"] = general_dist
              
     return copulas
 
@@ -392,9 +401,9 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
             for i,match in enumerate(copula_matches):
 
                 if copula_dict.get(match, None) is None:
-                    logging.debug(f"Match: {match} not found in copula dict. Falling back to general distribution")
+                    logging.debug(f"Match: {match} not found in copula dict. Falling back to rare distribution")
 
-                copula_obj = copula_dict.get(match, copula_dict.get("general_dist"))
+                copula_obj = copula_dict.get(match, copula_dict.get( (999,(999,999))  ))
 
                 copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
 
