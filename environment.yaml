@@ -6,7 +6,7 @@ dependencies:
   - numpy
   - pandas
   - matplotlib
-  - scikit-learn
   - pip:
     - ipykernel
+    - copulas
     
