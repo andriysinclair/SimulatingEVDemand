@@ -1,9 +1,10 @@
 import pandas as pd
 import logging
 from pathlib import Path
-from Auxillary_functions import return_num_journey_prob, return_journey_seq, return_copula, gen_cont_seq
+from Auxillary_functions import *
 import random
 import pickle
+import time
 
 # Configure basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
@@ -204,39 +205,85 @@ class MobilitySimulator:
 
             logging.info(f"Tools for {self.year} Saved!")
 
-    def simulate(self, start_month, start_day, end_month, end_day):
+    def simulate(self, start_month, start_day, end_month, end_day, num_people, track_performance = False):
 
-        # Start Fresh
+        i_s = {}
 
-        self.mobility_schedule = pd.DataFrame()
+        if track_performance:
+            sim_times = []
 
-        # Generate TS
+        for i in range(num_people):
+            
+            if track_performance:
+                start_time = time.time()
 
-        self._gen_ts(start_month, start_day, end_month, end_day)
+            # Start Fresh
 
-        # Generate num trips
+            self.mobility_schedule = pd.DataFrame()
 
-        trip_counts = list(range(0,self.trip_cut_off+1))
+            # Generate TS
 
-        self.mobility_schedule["num_trips"] = self.mobility_schedule["we_wd"].apply(lambda x: random.choices(trip_counts, self.num_journey_p_vector_wd)[0] if x == 1 else random.choices(trip_counts, self.num_journey_p_vector_we)[0])
+            self._gen_ts(start_month, start_day, end_month, end_day)
 
-        # Generate journey sequences
+            # Generate num trips
 
-        self.mobility_schedule["trip_seqs"] = self.mobility_schedule.apply(
-            lambda row: random.choices(
-                self.jour_seq_p_vector_wd[f"trip_length_{row['num_trips']}"][0],  # List of sequences
-                weights=self.jour_seq_p_vector_wd[f"trip_length_{row['num_trips']}"][1]  # Corresponding probabilities
-            )[0] if row["we_wd"] == 1 else random.choices(
-                self.jour_seq_p_vector_we[f"trip_length_{row['num_trips']}"][0],
-                weights=self.jour_seq_p_vector_we[f"trip_length_{row['num_trips']}"][1]
-            )[0],
-            axis=1  # Apply row-wise
-        )
+            trip_counts = list(range(0,self.trip_cut_off+1))
 
-        # Generate continous values based on copulas
+            self.mobility_schedule["num_trips"] = self.mobility_schedule["we_wd"].apply(lambda x: random.choices(trip_counts, self.num_journey_p_vector_wd)[0] if x == 1 else random.choices(trip_counts, self.num_journey_p_vector_we)[0])
 
+            # Generate journey sequences
 
-        return self.mobility_schedule
+            self.mobility_schedule["trip_seqs"] = self.mobility_schedule.apply(
+                lambda row: random.choices(
+                    self.jour_seq_p_vector_wd[f"trip_length_{row['num_trips']}"][0],  # List of sequences
+                    weights=self.jour_seq_p_vector_wd[f"trip_length_{row['num_trips']}"][1]  # Corresponding probabilities
+                )[0] if row["we_wd"] == 1 else random.choices(
+                    self.jour_seq_p_vector_we[f"trip_length_{row['num_trips']}"][0],
+                    weights=self.jour_seq_p_vector_we[f"trip_length_{row['num_trips']}"][1]
+                )[0],
+                axis=1  # Apply row-wise
+            )
+
+            # Generate continous values based on copulas
+
+            self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
+
+            i_s[i] = self.mobility_schedule
+
+            logging.info(f"{i+1} out of {num_people} simulations complete!")
+
+            if track_performance:
+                end_time = time.time()
+
+                time_for_sim = end_time - start_time
+
+                sim_times.append(time_for_sim)
+
+        if track_performance is True:
+            logging.info(f"track_performance set to {track_performance}.")
+            logging.info("Returning further files. Please check docs.")
+
+            all_distance = []
+            all_start_t = []
+            all_end_t = []
+            all_seqs = []
+            all_we_wd = []
+
+            for i in range(num_people):
+                i_s[i].apply(lambda row: calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd), axis=1)
+
+            calc_df = pd.DataFrame({
+                "we_wd": all_we_wd,
+                "all_distance": all_distance,
+                "all_start_t": all_start_t,
+                "all_end__t": all_end_t,
+                "all_seqs": all_seqs
+            })
+
+            return i_s, calc_df, sim_times
+            
+        else:
+            return i_s
     
 # Quick loop to save all tools for every year
 

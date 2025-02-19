@@ -457,11 +457,25 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
 
                     logging.debug(f"current output: {start_end_dis}\n")
 
-            logging.info("Row completed! \n")
+            logging.debug("Row completed! \n")
             return start_end_dis
         
     else:
-        logging.info("Row completed! \n")
+        logging.debug("Row completed! \n")
         return 0
 
+def calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd):
 
+    if row["start_end_distance"]!=0:
+
+        for type,trip in zip(row["trip_seqs"], row["start_end_distance"]):
+            #print(type)
+            #print(trip[0])
+            #print(trip)
+
+            all_start_t.append(trip[0])
+            all_end_t.append(trip[1])
+            all_distance.append(trip[2])
+
+            all_seqs.append(type)
+            all_we_wd.append(row["we_wd"])
