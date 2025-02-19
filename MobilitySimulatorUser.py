@@ -4,8 +4,9 @@ from pathlib import Path
 from Auxillary_functions import return_num_journey_prob, return_journey_seq, return_copula, gen_cont_seq
 import random
 import pickle
+import concurrent.futures
 
-from MobilitySimulatorDev import MobilitySimulator#
+from MobilitySimulatorDev import MobilitySimulator
 
 # Configure basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')

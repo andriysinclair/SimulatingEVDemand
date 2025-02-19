@@ -5,6 +5,7 @@ from Auxillary_functions import *
 import random
 import pickle
 import time
+import swifter
 
 # Configure basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
@@ -205,7 +206,7 @@ class MobilitySimulator:
 
             logging.info(f"Tools for {self.year} Saved!")
 
-    def simulate(self, start_month, start_day, end_month, end_day, num_people, track_performance = False):
+    def simulate(self, start_month, start_day, end_month, end_day, num_people, track_performance = False, prll = False):
 
         i_s = {}
 
@@ -246,8 +247,11 @@ class MobilitySimulator:
 
             # Generate continous values based on copulas
 
-            self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
-
+            if prll:
+                self.mobility_schedule["start_end_distance"] = self.mobility_schedule.swifter.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
+            else:
+                self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
+            
             i_s[i] = self.mobility_schedule
 
             logging.info(f"{i+1} out of {num_people} simulations complete!")

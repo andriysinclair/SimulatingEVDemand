@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from copulas.multivariate import GaussianMultivariate
+import concurrent.futures
 
 # Configure basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
@@ -463,7 +464,7 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
     else:
         logging.debug("Row completed! \n")
         return 0
-
+    
 def calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd):
 
     if row["start_end_distance"]!=0:
@@ -479,3 +480,4 @@ def calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, al
 
             all_seqs.append(type)
             all_we_wd.append(row["we_wd"])
+
