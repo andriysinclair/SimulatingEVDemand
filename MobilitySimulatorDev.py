@@ -152,11 +152,11 @@ class MobilitySimulator:
         self.copulas_wd = return_copula(df=nts_df, weekday=1, year=self.year, trip_cut_off=self.trip_cut_off)
         self.copulas_we = return_copula(df=nts_df, weekday=2, year=self.year, trip_cut_off=self.trip_cut_off)
 
-    def _fit_tools(self, tools_folder):
+    def _fit_tools(self, tools_folder, nts_df):
 
-        self.get_num_journey_p_vector()
-        self.gen_jour_seq_p_vector()
-        self.gen_copulas()
+        self._get_num_journey_p_vector(nts_df)
+        self._gen_jour_seq_p_vector(nts_df)
+        self._gen_copulas(nts_df)
 
         # Saving tools to tools folder
 
@@ -235,9 +235,6 @@ class MobilitySimulator:
 
         # Generate continous values based on copulas
 
-        self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
-
-
 
         return self.mobility_schedule
     
@@ -255,3 +252,11 @@ for year in range(2005,2025):
 
 #print(m.mobility_schedule)
 '''
+
+
+
+#m = MobilitySimulator(year=2017)
+
+#m._fit_tools(tools_folder=tools, nts_df = df)
+
+#m.simulate()
