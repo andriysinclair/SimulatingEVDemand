@@ -482,7 +482,7 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
         logging.debug("Row completed! \n")
         return 0
     
-def calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd):
+def make_by_trip_df(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd, all_individual_ids, all_dates):
 
     if row["start_end_distance"]!=0:
 
@@ -497,6 +497,21 @@ def calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, al
 
             all_seqs.append(type)
             all_we_wd.append(row["we_wd"])
+
+            all_individual_ids.append(row["individual_id"])
+            all_dates.append(row["Date"])
+
+    else:
+        all_start_t.append(None)
+        all_end_t.append(None)
+        all_distance.append(None)
+
+        all_seqs.append(None)
+        all_we_wd.append(row["we_wd"])
+
+        all_individual_ids.append(row["individual_id"])
+        all_dates.append(row["Date"])
+
 
 
 if __name__ == "__main__":

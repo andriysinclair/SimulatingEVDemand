@@ -100,10 +100,12 @@ class MobilitySimulator:
 
         year_part = ts.year
         we_wd_part = ts.weekday.map(we_wd_mapping)
+        date_part = ts.strftime("%d-%m-%Y")  # Convert to "DD-MM-YYYY"
 
         # Appending to mobility schedule:
         self.mobility_schedule["Year"] = year_part
         self.mobility_schedule["we_wd"] = we_wd_part
+        self.mobility_schedule["Date"] = date_part  # Add formatted date column
 
         logging.debug(f"Head of mobility_schedule: {self.mobility_schedule}")
     
@@ -206,16 +208,16 @@ class MobilitySimulator:
 
             logging.info(f"Tools for {self.year} Saved!")
 
-    def simulate(self, start_month, start_day, end_month, end_day, num_people, track_performance = False, prll = False):
+    def simulate(self, start_month, start_day, end_month, end_day, num_people, by_trip_df = False, prll = False):
 
         i_s = {}
 
-        if track_performance:
+        if by_trip_df:
             sim_times = []
 
         for i in range(num_people):
             
-            if track_performance:
+            if by_trip_df:
                 start_time = time.time()
 
             # Start Fresh
@@ -244,20 +246,23 @@ class MobilitySimulator:
                 self.mobility_schedule["start_end_distance"] = self.mobility_schedule.swifter.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
             else:
                 self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
+
+            # Adding individual id
+            self.mobility_schedule["individual_id"] = i
             
             i_s[i] = self.mobility_schedule
 
             logging.info(f"{i+1} out of {num_people} simulations complete!")
 
-            if track_performance:
+            if by_trip_df:
                 end_time = time.time()
 
                 time_for_sim = end_time - start_time
 
                 sim_times.append(time_for_sim)
 
-        if track_performance is True:
-            logging.info(f"track_performance set to {track_performance}.")
+        if by_trip_df is True:
+            logging.info(f"by_trip_df set to {by_trip_df}.")
             logging.info("Returning further files. Please check docs.")
 
             all_distance = []
@@ -265,11 +270,15 @@ class MobilitySimulator:
             all_end_t = []
             all_seqs = []
             all_we_wd = []
+            all_individual_ids = []
+            all_dates = []
 
             for i in range(num_people):
-                i_s[i].apply(lambda row: calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd), axis=1)
+                i_s[i].apply(lambda row: make_by_trip_df(row, all_distance, all_start_t, all_end_t, all_seqs, all_we_wd, all_individual_ids, all_dates), axis=1)
 
-            calc_df = pd.DataFrame({
+            trip_df = pd.DataFrame({
+                "individual_ids": all_individual_ids,
+                "all_dates": all_dates,
                 "we_wd": all_we_wd,
                 "all_distance": all_distance,
                 "all_start_t": all_start_t,
@@ -277,7 +286,7 @@ class MobilitySimulator:
                 "all_seqs": all_seqs
             })
 
-            return i_s, calc_df, sim_times
+            return i_s, trip_df, sim_times
             
         else:
             return i_s
