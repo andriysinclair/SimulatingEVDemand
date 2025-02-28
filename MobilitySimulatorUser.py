@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     ms = MOBSIM(2017)
 
-    i_s, calc_df, sim_times = ms.simulate(1,1,1,30,5, track_performance=True)
+    i_s, calc_df, sim_times = ms.simulate(1,1,1,7,5, track_performance=True)
 
     # Save to a file
     with open(agents + "/agents.pkl", "wb") as f:
@@ -74,3 +74,4 @@ if __name__ == "__main__":
         pickle.dump(calc_df, f)
 
     print("Sim times saved successfully!")
+    

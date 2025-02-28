@@ -4,10 +4,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from copulas.multivariate import GaussianMultivariate
-import concurrent.futures
+import pickle
+import random
 
 # Configure basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Importing dataframe for experimentation
 
@@ -207,6 +211,41 @@ def return_journey_seq(df, weekday, year):
 
     return pop_seq_weights
 
+def gen_trip_seqs(df, jour_seq_p_vector_wd, jour_seq_p_vector_we):
+
+    trip_seqs = []
+
+    final_trip_loc = None
+
+    for i, (we_wd, num_trips) in enumerate(zip(df["we_wd"], df["num_trips"])):
+        logging.debug(f"Finding a sequence for row: {i} | we_wd: {we_wd} | num_trips: {num_trips}")
+
+        if num_trips == 0:
+            trip_seqs.append(0)
+            continue
+
+        # Choose probability vector (Weekday or Weekend)
+        p_vector = jour_seq_p_vector_wd if we_wd == 1 else jour_seq_p_vector_we
+
+
+        while True:
+            result = random.choices(p_vector[f"trip_length_{num_trips}"][0],  # List of sequences
+            weights=p_vector[f"trip_length_{num_trips}"][1]  # Corresponding probabilities
+            )[0]
+
+            if final_trip_loc is None or result[0][0] == final_trip_loc:
+                final_trip_loc = result[-1][1]
+                trip_seqs.append(result)
+                logging.debug("Search successful")
+                logging.debug(f"Result: {result}")
+                break
+
+            else:
+                logging.debug(f"Search unsuccessful")
+                logging.debug(f"Final location: {final_trip_loc} != Starting location: {result[0][0]}")
+
+    return trip_seqs
+
 def return_copula(df, weekday, year, trip_cut_off, rare_threshold = 100, plots=False):
 
     """
@@ -393,8 +432,10 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
 
                         #search_iterations += 1
                         #print(f"\rSearch Iterations: {search_iterations}", end="", flush=True)
+                        trip_time = copula_samp[1] - copula_samp[0] # in minutes
+                        max_distance = trip_time*1.2    # Max distance, 70mph = 1.1667 miles per minute
 
-                        if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]):
+                        if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and copula_samp[2] <= max_distance:
                             break
 
                     start_end_dis.append(copula_samp)
@@ -405,6 +446,8 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
                     while True:
 
                         copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
+                        trip_time = copula_samp[1] - copula_samp[0] # in minutes
+                        max_distance = trip_time*1.2    # Max distance, 70mph = 1.1667 miles per minute
 
                         #print(f"copula_samp: {copula_samp}")
                         # All entries are negative and trip end is greater than trip start and next trip trip start is greater than last trips trip end
@@ -419,7 +462,7 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
                             restart_flag = True
                             break  # Break inner loop to restart
 
-                        if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and (copula_samp[0] > start_end_dis[-1][1]):
+                        if np.all(copula_samp>0) and (copula_samp[1] > copula_samp[0]) and (copula_samp[0] > start_end_dis[-1][1]) and (copula_samp[2] <= max_distance):
                             break
 
                     if restart_flag:
@@ -455,3 +498,22 @@ def calculate_statistics(row, all_distance, all_start_t, all_end_t, all_seqs, al
             all_seqs.append(type)
             all_we_wd.append(row["we_wd"])
 
+
+if __name__ == "__main__":
+
+    # Configure basic logging
+    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    from MobilitySimulatorUser import MOBSIM
+    ms = MOBSIM(2017)
+
+    # Load the file
+    with open("/home/trapfishscott/Cambridge24.25/Energy_thesis/Agents/agents.pkl", "rb") as f:
+        loaded_data = pickle.load(f)
+
+    results = gen_trip_seqs(loaded_data[0],jour_seq_p_vector_wd=ms.jour_seq_p_vector_wd, jour_seq_p_vector_we=ms.jour_seq_p_vector_we)
+
+    print(results)

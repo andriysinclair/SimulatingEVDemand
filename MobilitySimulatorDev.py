@@ -8,10 +8,10 @@ import time
 import swifter
 
 # Configure basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 log_file = "/home/trapfishscott/Cambridge24.25/Energy_thesis/logs/debug_log.log"
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
@@ -234,16 +234,9 @@ class MobilitySimulator:
 
             # Generate journey sequences
 
-            self.mobility_schedule["trip_seqs"] = self.mobility_schedule.apply(
-                lambda row: random.choices(
-                    self.jour_seq_p_vector_wd[f"trip_length_{row['num_trips']}"][0],  # List of sequences
-                    weights=self.jour_seq_p_vector_wd[f"trip_length_{row['num_trips']}"][1]  # Corresponding probabilities
-                )[0] if row["we_wd"] == 1 else random.choices(
-                    self.jour_seq_p_vector_we[f"trip_length_{row['num_trips']}"][0],
-                    weights=self.jour_seq_p_vector_we[f"trip_length_{row['num_trips']}"][1]
-                )[0],
-                axis=1  # Apply row-wise
-            )
+            self.mobility_schedule["trip_seqs"] = gen_trip_seqs(df=self.mobility_schedule, 
+                                                                jour_seq_p_vector_wd=self.jour_seq_p_vector_wd, 
+                                                                jour_seq_p_vector_we=self.jour_seq_p_vector_we)
 
             # Generate continous values based on copulas
 
@@ -291,23 +284,5 @@ class MobilitySimulator:
     
 # Quick loop to save all tools for every year
 
-'''
-for year in range(2005,2025):
-
-    m = MobilitySimulator(nts_df=df, year=year, trip_cut_off=10)
-
-    m.fit_tools(tools_folder=tools)
-
-#m.simulate()
-
-
-#print(m.mobility_schedule)
-'''
-
-
-
-#m = MobilitySimulator(year=2017)
-
-#m._fit_tools(tools_folder=tools, nts_df = df)
-
-#m.simulate()
+if __name__ == "__main__":
+    pass
