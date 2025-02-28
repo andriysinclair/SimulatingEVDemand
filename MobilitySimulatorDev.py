@@ -35,7 +35,7 @@ if logger.hasHandlers():
     logger.addHandler(console_handler)
 
 # nts_df
-df = pd.read_pickle("/home/trapfishscott/Cambridge24.25/Energy_thesis/Data/df_car.pkl")
+df = pd.read_pickle(str(Path(__file__).resolve().parent / "Data" / "df_car.pkl"))
 
 # Tools folder
 tools = str(Path(__file__).resolve().parent / "Tools")
@@ -154,7 +154,7 @@ class MobilitySimulator:
         self.copulas_wd = return_copula(df=nts_df, weekday=1, year=self.year, trip_cut_off=self.trip_cut_off)
         self.copulas_we = return_copula(df=nts_df, weekday=2, year=self.year, trip_cut_off=self.trip_cut_off)
 
-    def _fit_tools(self, tools_folder, nts_df):
+    def _fit_tools(self, tools_folder, nts_df=df):
 
         self._get_num_journey_p_vector(nts_df)
         self._gen_jour_seq_p_vector(nts_df)

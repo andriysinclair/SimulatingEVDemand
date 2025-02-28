@@ -9,13 +9,16 @@ import concurrent.futures
 from MobilitySimulatorDev import MobilitySimulator
 
 # Configure basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s', force=True)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Tools folder
 tools = str(Path(__file__).resolve().parent / "Tools")
+
+#Agents folder
+agents = str(Path(__file__).resolve().parent / "Agents")
 
 class MOBSIM(MobilitySimulator):
 
@@ -48,7 +51,26 @@ class MOBSIM(MobilitySimulator):
             self.copulas_wd = tools_dict[year]["copulas_wd"]
 
 
-        
+if __name__ == "__main__":
 
+    ms = MOBSIM(2017)
 
+    i_s, calc_df, sim_times = ms.simulate(1,1,1,30,5, track_performance=True)
 
+    # Save to a file
+    with open(agents + "/agents.pkl", "wb") as f:
+        pickle.dump(i_s, f)
+
+    print("Agents saved successfully!")
+
+    # Save to a file
+    with open(agents + "/calculations.pkl", "wb") as f:
+        pickle.dump(calc_df, f)
+
+    print("Calculation df saved successfully!")
+
+    # Save to a file
+    with open(agents + "/sim_times.pkl", "wb") as f:
+        pickle.dump(calc_df, f)
+
+    print("Sim times saved successfully!")

@@ -270,33 +270,12 @@ def return_copula(df, weekday, year, trip_cut_off, rare_threshold = 100, plots=F
 
     # Copulas
     logging.info("Using Copulas to generate multivariate distributions for continous variables")
-
-    logging.debug("Creating column with 'JourSeq' 'TripType' pairs")
   
-    # Making all journeys > 10 (cut-off) value == 10
-
-    df["combos"] = [list(x) for x in list(zip(df["JourSeq"], df["TripType"]))]
-
-    # All possible combos of "JourSeq" and "TripType"
-
-    df["combos"] = df["combos"].apply(lambda x: [trip_cut_off  if x[0] > trip_cut_off else x[0]] + list(x[1:]))
-
-    # Converting back to a tuple
-
-    df["combos"] = df["combos"].apply(tuple)
-
     # Dropping Nans
     df = df.dropna(axis=0)
 
-    ## Assign all rare combos to (999, (999,999)) dist
-
-    # Obtaining calue counts
-    combo_val_counts = df["combos"].value_counts()
-
-    df["combos"] = df["combos"].map(lambda x: x if combo_val_counts[x] > rare_threshold else (999,(999,999)))
-
-    logging.debug("All unique combos ...")
-    logging.debug(f"{df["combos"].unique()}")
+    logging.debug("All unique trip types ...")
+    logging.debug(f"{df["TripType"].unique()}")
 
     # Using a general distribution for very rare journey sequences.
 
@@ -307,15 +286,11 @@ def return_copula(df, weekday, year, trip_cut_off, rare_threshold = 100, plots=F
 
     copulas = {}
 
-    for combo in df["combos"].unique():
-        logging.debug(f"Fitting combo: {combo}")
+    for trip_type in df["TripType"].unique():
+        logging.debug(f"Fitting combo: {trip_type}")
         dist = GaussianMultivariate()
-        to_copula = df[df["combos"] == combo][["TripStart", "TripEnd", "TripDisExSW"]]
+        to_copula = df[df["TripType"] == trip_type][["TripStart", "TripEnd", "TripDisExSW"]]
         logging.debug("Head of to_copulas...")
-        logging.debug(f"{to_copula.head()}")
-        # Dropping nans
-        #to_copula = to_copula.dropna(axis=0)
-        logging.debug("Having dropped nans")
         logging.debug(f"{to_copula.head()}")
 
         logging.debug("Taking 10000 randomly drawn samples or otherwise copula crashes")
@@ -333,13 +308,9 @@ def return_copula(df, weekday, year, trip_cut_off, rare_threshold = 100, plots=F
         logging.debug(f"len of df after sampling: {len(to_copula)}")   
 
         dist.fit(to_copula)
-        copulas[combo] = dist
-        logging.info(f"{combo} is complete!")
+        copulas[trip_type] = dist
+        logging.info(f"{trip_type} is complete!")
 
-        logging.debug("Adding general distribution")
-
-    #copulas["general_dist"] = general_dist
-             
     return copulas
 
 #c = return_trip_start_end(df=car_df, weekday=1, year=2014, plots=False)
@@ -394,7 +365,7 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
 
             start_end_dis = []
 
-            copula_matches =  [(i+1, row["trip_seqs"][i]) for i in range(row["num_trips"])]
+            copula_matches =  [seq for seq in row["trip_seqs"]]
 
             logging.debug(f"Copula matches for this row: {copula_matches}")
 
@@ -403,9 +374,9 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
             for i,match in enumerate(copula_matches):
 
                 if copula_dict.get(match, None) is None:
-                    logging.debug(f"Match: {match} not found in copula dict. Falling back to rare distribution")
+                    logging.debug(f"Match: {match} not found in copula dict. Falling back to common distribution")
 
-                copula_obj = copula_dict.get(match, copula_dict.get( (999,(999,999))  ))
+                copula_obj = copula_dict.get(match, copula_dict.get( (999,999)  ))
 
                 copula_samp = np.round(copula_obj.sample(1).to_numpy(), 2).flatten()
 
@@ -457,6 +428,9 @@ def gen_cont_seq(row, copula_dicts, restart_threshold=300):
                     start_end_dis.append(copula_samp)
 
                     logging.debug(f"current output: {start_end_dis}\n")
+
+                if restart_flag:
+                    continue
 
             logging.debug("Row completed! \n")
             return start_end_dis
