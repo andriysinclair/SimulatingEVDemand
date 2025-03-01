@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+'''
+
 log_file = "/home/trapfishscott/Cambridge24.25/Energy_thesis/logs/debug_log.log"
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
 
@@ -35,8 +37,10 @@ if logger.hasHandlers():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
+'''
+
 # nts_df
-df = pd.read_pickle(str(Path(__file__).resolve().parent / "Data" / "df_car.pkl"))
+#df = pd.read_pickle(str(Path(__file__).resolve().parent / "Data" / "df_car.pkl"))
 
 # Tools folder
 tools = str(Path(__file__).resolve().parent / "Tools")
@@ -157,7 +161,7 @@ class MobilitySimulator:
         self.copulas_wd = return_copula(df=nts_df, weekday=1, year=self.year, trip_cut_off=self.trip_cut_off)
         self.copulas_we = return_copula(df=nts_df, weekday=2, year=self.year, trip_cut_off=self.trip_cut_off)
 
-    def _fit_tools(self, tools_folder, nts_df=df):
+    def _fit_tools(self, tools_folder, nts_df):
 
         self._get_num_journey_p_vector(nts_df)
         self._gen_jour_seq_p_vector(nts_df)
@@ -243,13 +247,14 @@ class MobilitySimulator:
 
             if prll:
                 with tqdm(total=len(self.mobility_schedule), desc="Simulating trips", unit="row") as pbar:
-                    results = Parallel(n_jobs=-2)(
+                    results = Parallel(n_jobs=-1)(
                         delayed(gen_cont_seq)(row, [self.copulas_wd, self.copulas_we], restart_threshold=300)
-                        for row in self.mobility_schedule.itertuples(index=False)
+                        for _, row in self.mobility_schedule.iterrows()  # Fix: Use iterrows() for Pandas Series rows
                     )
                     pbar.update(len(results))  # Update progress bar once done
 
                 self.mobility_schedule["start_end_distance"] = results
+
 
             else:
                 self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)

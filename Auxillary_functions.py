@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 # Importing dataframe for experimentation
 
-car_df = pd.read_pickle("/home/trapfishscott/Cambridge24.25/Energy_thesis/Data/df_car.pkl")
+#car_df = pd.read_pickle("/home/trapfishscott/Cambridge24.25/Energy_thesis/Data/df_car.pkl")
 
 def filter_df(df, weekday, year):
 
