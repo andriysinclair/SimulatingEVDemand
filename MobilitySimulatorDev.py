@@ -5,7 +5,8 @@ from Auxillary_functions import *
 import random
 import pickle
 import time
-import swifter
+from tqdm import tqdm
+from joblib import Parallel, delayed
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -240,10 +241,16 @@ class MobilitySimulator:
                                                                 jour_seq_p_vector_wd=self.jour_seq_p_vector_wd, 
                                                                 jour_seq_p_vector_we=self.jour_seq_p_vector_we)
 
-            # Generate continous values based on copulas
-
             if prll:
-                self.mobility_schedule["start_end_distance"] = self.mobility_schedule.swifter.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
+                with tqdm(total=len(self.mobility_schedule), desc="Simulating trips", unit="row") as pbar:
+                    results = Parallel(n_jobs=-2)(
+                        delayed(gen_cont_seq)(row, [self.copulas_wd, self.copulas_we], restart_threshold=300)
+                        for row in self.mobility_schedule.itertuples(index=False)
+                    )
+                    pbar.update(len(results))  # Update progress bar once done
+
+                self.mobility_schedule["start_end_distance"] = results
+
             else:
                 self.mobility_schedule["start_end_distance"] = self.mobility_schedule.apply(lambda row: gen_cont_seq(row, copula_dicts = [self.copulas_wd, self.copulas_we], restart_threshold=300), axis=1)
 
