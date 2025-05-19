@@ -14,6 +14,7 @@ def trip_data_loader(trip_path, survey_years, chunksize,
                      output_file_name, 
                      trip_cols_to_keep = cfg.trip_cols_to_keep, 
                      trip_purpouse_mapping = cfg.trip_purpouse_mapping,
+                     trip_type_mapping = cfg.trip_type_mapping,
                      is_loaded = False) -> pd.DataFrame:
 
     # Loading in chunks to reduce cost
@@ -77,7 +78,16 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         # Making trip type column; From -> To
 
-        merged_df["TripType"] = str(merged_df["TripPurpFrom_B01ID"]) + "-" + str(merged_df["TripPurpTo_B01ID"])
+        merged_df["TripType"] = (
+            merged_df["TripPurpFrom_B01ID"].astype(str) + "-" + merged_df["TripPurpTo_B01ID"].astype(str)
+        )
+
+        # Mapping...
+        merged_df["TripType"] = merged_df["TripType"].map(trip_type_mapping)
+
+        # Dropping legact columns
+
+        merged_df = merged_df.drop(columns=["TripPurpFrom_B01ID", "TripPurpTo_B01ID"], axis=1)
 
         # Sort values to a rational order
 
@@ -110,7 +120,7 @@ if __name__ == "__main__":
     print(cfg.root_folder)
     print("")
     trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017], 
-                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=True)
+                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=False)
 
     trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df_2017.csv", index=False)
 

@@ -53,6 +53,22 @@ trip_purpouse_mapping = {
     22: 2,  # Other escort
     23: 3}   # Home
 
+trip_type_mapping = {
+    
+    "3-1": 1,   #Home-Work
+    "1-3": 2,   #Work-Home
+
+    "3-2": 3,   #Home-Other
+    "2-3": 4,   #Other-Home
+
+    "1-2": 5,   #Work-Other
+    "2-1": 6,   #Other-Work
+
+    "1-1": 7,   #Home-Home
+    "2-2": 8,   #Other-Other
+    "3-3": 9,   #Work-Work
+}
+
 
 if __name__ == "__main__":
     print(root_folder)
