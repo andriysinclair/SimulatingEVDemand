@@ -1,14 +1,1 @@
-# Ignore Python cache
-__pycache__/
-
-# Ignore the OMOD directory
-OMOD/
-
-# Ignore everything in Data except df_car.pkl
-Data/
-
-# debug logs
-logs/
-
-#Rough work
-RoughWork.ipynb
+/data
