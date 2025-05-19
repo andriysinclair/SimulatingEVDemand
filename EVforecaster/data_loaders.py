@@ -8,7 +8,7 @@ trip_data = cfg.root_folder + "/data/trip_eul_2002-2023.tab"
 day_data = cfg.root_folder + "/data/day_eul_2002-2023.tab"
 
 # Set up basic configuration for logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 def trip_data_loader(trip_path, survey_years, chunksize, 
@@ -95,6 +95,14 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         merged_df = merged_df.sort_values(by=["IndividualID", "TravDay", "JourSeq", "TripStart", "TripEnd"], ascending=True)
 
+        #  Creating rolling time series for each individual for trip start
+
+        merged_df["TripStartRolling"] = (merged_df["TravDay"] - 1) * 24*60 + merged_df["TripStart"]
+
+        # """" for trip end
+
+        merged_df["TripEndRolling"] = (merged_df["TravDay"] - 1) * 24*60 + merged_df["TripEnd"]
+
         # Dumping to pickle
 
         with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
@@ -180,6 +188,8 @@ def merge_dfs(df1, df2, common_id, output_file_name, is_loaded=False):
 
         logging.info(f"File saved to {output_file_name}")
 
+        return merged_df
+
     else:
         with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
             merged_df = pickle.load(f)  
@@ -188,16 +198,9 @@ def merge_dfs(df1, df2, common_id, output_file_name, is_loaded=False):
 
         return merged_df
 
-def create_charging_nodes(trip_df):
-    
-    df = trip_df.copy()
-
-    # For each individual fill in missing travel weeks
-
-
 
 if __name__ == "__main__":
-    print(cfg.root_folder)
+    logging.debug(cfg.root_folder)
     print("")
     trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017], 
                                chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=True)
@@ -209,11 +212,16 @@ if __name__ == "__main__":
     
     trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df_2017.csv", index=False)
 
-    trip_df.head()
+    logging.debug(trip_df.head())
 
-    print(len(day_df))
-    print(day_df.head())
+    logging.debug(len(day_df))
+    logging.debug(day_df.head())
 
     day_trip_merge = merge_dfs(df1=trip_df, df2=day_df, common_id="DayID", output_file_name="day_trip_merge.pkl", is_loaded=True)
 
+
     day_trip_merge.to_csv(cfg.root_folder + "/output_csvs/day_trip_merge_2017.csv", index=False)
+
+    i_1 = charging_logic(day_trip_merge, test_index=1)
+
+    print(i_1)

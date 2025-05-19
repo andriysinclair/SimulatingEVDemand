@@ -24,6 +24,12 @@ trip_cols_to_keep = [
     "TripPurpTo_B01ID"
 ]
 
+day_cols_to_keep = [
+    "DayID",
+    "TravelYear",
+    "TravelWeekDay_B01ID"
+]
+
 # Work: 1
 # Other: 2
 # Home: 3
@@ -54,7 +60,7 @@ trip_purpouse_mapping = {
     23: 3}   # Home
 
 trip_type_mapping = {
-    
+
     "3-1": 1,   #Home-Work
     "1-3": 2,   #Work-Home
 
