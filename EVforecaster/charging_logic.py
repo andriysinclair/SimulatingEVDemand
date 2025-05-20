@@ -22,6 +22,8 @@ def generate_charger(x, home_charger_likelihood=0.96, work_charger_likelihood=0.
         return random.choices([1,0], weights=[work_charger_likelihood,1-work_charger_likelihood])[0]
     
 
+### Auxillary functions for charging logic ###
+
 
 
 
@@ -58,6 +60,8 @@ def charging_logic(df, battery_size = cfg.battery_size, energy_efficiency=cfg.en
 
             first_trip_req_charge = (i_df.iloc[0]["TripDisExSW"]* energy_efficiency)/1000
             init_SOC = random.uniform(first_trip_req_charge, battery_size)
+
+            logging.info(f"Intitial SOC: {init_SOC}")
 
             # Calculating time at trip end location
 
@@ -124,7 +128,7 @@ def charging_logic(df, battery_size = cfg.battery_size, energy_efficiency=cfg.en
                                 charging_dict["TotalPowerUsed"].append(total_power_used)
 
                                 charge_start_time = row["TripEnd"]
-                                charge_end_time = charge_start_time + total_power_used/location_charging_rate
+                                charge_end_time = charge_start_time + (total_power_used/location_charging_rate*60)
 
                                 # Rounding to nearest 5 minutes
                                 charge_end_time = 5 * round(charge_end_time / 5)
@@ -149,7 +153,7 @@ def charging_logic(df, battery_size = cfg.battery_size, energy_efficiency=cfg.en
                                 charging_dict["TotalPowerUsed"].append(total_possible_charge)
 
                                 charge_start_time = row["TripEnd"]
-                                charge_end_time = charge_start_time + total_possible_charge/location_charging_rate
+                                charge_end_time = charge_start_time + (total_possible_charge/location_charging_rate*60)
 
                                 # Rounding to nearest 5 minutes
                                 charge_end_time = 5 * round(charge_end_time / 5)
@@ -213,7 +217,7 @@ def charging_logic(df, battery_size = cfg.battery_size, energy_efficiency=cfg.en
 
                             total_power_used = battery_size - SOC_list[-1]
                             charge_start_time = row["TripEnd"]
-                            charge_end_time = charge_start_time + total_power_used/location_charging_rate
+                            charge_end_time = charge_start_time + (total_power_used/location_charging_rate*60)
 
                             # Rounding to nearest 5 minutes
                             charge_end_time = 5 * round(charge_end_time / 5)
@@ -246,7 +250,7 @@ def charging_logic(df, battery_size = cfg.battery_size, energy_efficiency=cfg.en
             logging.info(charge_end_time_list)
 
 
-            logging.info(i_df[["TripEndLoc", "IsCharger", "TripDisExSW", "Distance+1", "Req_charge+1", "TripStartRolling", "TripEndRolling", "TripStartRolling+1", "TimeEndLoc"]].head())
+            logging.info(i_df[["TripEndLoc", "IsCharger", "TripDisExSW", "Distance+1", "Req_charge+1", "TripStartRolling", "TripEndRolling", "TripStartRolling+1", "TripEndLoc", "TimeEndLoc"]].head())
             print("")
 
         charging_df = pd.DataFrame(charging_dict)
