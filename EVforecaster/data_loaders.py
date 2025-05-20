@@ -222,6 +222,4 @@ if __name__ == "__main__":
 
     day_trip_merge.to_csv(cfg.root_folder + "/output_csvs/day_trip_merge_2017.csv", index=False)
 
-    i_1 = charging_logic(day_trip_merge, test_index=1)
 
-    print(i_1)

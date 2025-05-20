@@ -1,6 +1,8 @@
 import os
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from pathlib import Path
+from scipy.stats import norm
+import numpy as np
 
 # Absolute Paths
 
@@ -75,6 +77,30 @@ trip_type_mapping = {
     "3-3": 9,   #Work-Work
 }
 
+
+### Charging logic configuration ###
+
+battery_size = 70.7   #kWh
+energy_efficiency = 302  #Wh/Mi
+min_stop_time_to_charge = 60
+
+
+
+charging_rates = {1: 2.7,            # Work
+                  2: 11,            # Other
+                  3: 2.3}            # Home
+
+def SOC_charging_prob(soc, mu=0.6, sigma=0.2, truncate=True):
+    cdf = norm.cdf(soc, loc=mu, scale=sigma)
+    prob = 1 - cdf
+
+    # Ensure P(charge) = 1 if SOC=0
+    if truncate:
+        prob = np.where(soc<=0, 1.0, prob)
+
+    return prob
+
+# SOC-based charging decision model
 
 if __name__ == "__main__":
     print(root_folder)
