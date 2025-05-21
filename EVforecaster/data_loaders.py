@@ -9,7 +9,7 @@ day_data = cfg.root_folder + "/data/day_eul_2002-2023.tab"
 household_data =cfg.root_folder + "/data/household_eul_2002-2023.tab"
 
 # Set up basic configuration for logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def trip_data_loader(trip_path, survey_years, chunksize, 
@@ -91,6 +91,8 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         merged_df = merged_df.rename(columns={"TripPurpFrom_B01ID": "TripStartLoc",
                                               "TripPurpTo_B01ID": "TripEndLoc"})
+        
+        # Check missing values
 
         # Sort values to a rational order
 
@@ -218,10 +220,21 @@ def merge_dfs(df1, df2, df3, common_id_1_2, common_id_2_3, output_file_name, is_
         merged_df_1_2 = pd.merge(left=df1, right=df2, on=common_id_1_2)
         merged_df_1_2_3 = pd.merge(left=merged_df_1_2, right=df3, on=common_id_2_3)
 
+        # Counting missing values
+
+        missing_counts = merged_df_1_2_3.isna().sum()
+        logging.debug("Missing value counts per column:")
+        logging.debug("\n" + str(missing_counts))
+
+        # Dropping all rows with missing values
+        merged_df_1_2_3 = merged_df_1_2_3.dropna()
+
         with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
             pickle.dump(merged_df_1_2_3, f)   
 
         logging.info(f"File saved to {output_file_name}")
+
+
 
         return merged_df_1_2_3
 
@@ -256,7 +269,7 @@ if __name__ == "__main__":
     #logging.debug(len(day_df))
     #logging.debug(day_df.head())
 
-    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=True)
+    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=False)
 
 
     merge_trip_day_hh_2017.to_csv(cfg.root_folder + "/output_csvs/merge_trip_day_hh_2017.csv", index=False)

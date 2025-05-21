@@ -44,6 +44,8 @@ def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location,
 
 def calculate_charging_session(SOC, location_charging_rate, time_duration_at_location, last_trip_flag,
                                charge_start_time, battery_size):
+    
+    charge_start_time = 5 * round(charge_start_time/5)
 
     remaining_capacity = battery_size - SOC
     logging.debug(f"Remaining capacity: {remaining_capacity:.2f}")
@@ -58,6 +60,8 @@ def calculate_charging_session(SOC, location_charging_rate, time_duration_at_loc
 
     new_SOC = SOC + charge_energy
     charge_duration = (charge_energy / location_charging_rate) * 60  # in minutes
+    charge_duration = 5 * round(charge_duration / 5)
+
     charge_end_time = charge_start_time + charge_duration
 
     logging.debug(f"New SOC: {new_SOC}")

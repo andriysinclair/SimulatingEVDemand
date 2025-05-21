@@ -9,10 +9,8 @@ description = "A Python package for EVforc, an EV charging demand forecasting to
 readme = "ReadMe.md"
 requires-python = ">=3.12"
 
-
 # Runtime dependencies
 dependencies = [
-  "scikit-learn",
   "matplotlib",
   "numpy",
   "ipykernel",
