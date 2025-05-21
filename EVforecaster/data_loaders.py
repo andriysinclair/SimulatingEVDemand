@@ -6,6 +6,7 @@ import pickle
 # Obtaining relevant paths
 trip_data = cfg.root_folder + "/data/trip_eul_2002-2023.tab"
 day_data = cfg.root_folder + "/data/day_eul_2002-2023.tab"
+household_data =cfg.root_folder + "/data/household_eul_2002-2023.tab"
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
@@ -175,31 +176,65 @@ def day_data_loader(day_path,
 
         return day_df
     
-def merge_dfs(df1, df2, common_id, output_file_name, is_loaded=False):
+def household_data_loader(household_path,
+                          output_file_name,
+                          household_cols_to_keep = cfg.household_cols_to_keep,
+                          is_loaded=False):
+    
+    if not is_loaded:
+        household_df = pd.read_csv(household_path, sep="\t")
+        household_df = household_df[household_cols_to_keep]
+
+        household_df["HouseholdID"] = household_df["HouseholdID"].astype(float)
+
+        logging.debug(household_df.dtypes)
+
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
+            pickle.dump(household_df, f)   
+
+        logging.info(f"File saved to {output_file_name}")
+
+        return household_df
+    
+    if is_loaded:
+
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
+            household_df = pickle.load(f)   
+
+        logging.debug(household_df.dtypes)
+
+        logging.info(f"loading {output_file_name}")
+
+        return household_df
+
+    
+def merge_dfs(df1, df2, df3, common_id_1_2, common_id_2_3, output_file_name, is_loaded=False):
 
     if not is_loaded:
         df1 = df1.copy()
         df2 = df2.copy()
+        df3 = df3.copy()
 
-        merged_df = pd.merge(left=df1, right=df2, on=common_id)
+        merged_df_1_2 = pd.merge(left=df1, right=df2, on=common_id_1_2)
+        merged_df_1_2_3 = pd.merge(left=merged_df_1_2, right=df3, on=common_id_2_3)
 
         with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
-            pickle.dump(merged_df, f)   
+            pickle.dump(merged_df_1_2_3, f)   
 
         logging.info(f"File saved to {output_file_name}")
 
-        return merged_df
+        return merged_df_1_2_3
 
     else:
         with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
-            merged_df = pickle.load(f)  
+            merged_df_1_2_3 = pickle.load(f)  
 
         logging.info(f"loading {output_file_name}")
 
-        return merged_df
-
-
+        return merged_df_1_2_3
+    
 if __name__ == "__main__":
+
     logging.debug(cfg.root_folder)
     print("")
     trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017], 
@@ -208,18 +243,22 @@ if __name__ == "__main__":
     day_df = day_data_loader(day_path=day_data,
                              output_file_name="day_df.pkl",
                              is_loaded=True)
+    
+    household_df = household_data_loader(household_path=household_data,
+                                         output_file_name="household_df.pkl",
+                                         is_loaded=True)
 
     
-    trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df_2017.csv", index=False)
+    #trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df_2017.csv", index=False)
 
-    logging.debug(trip_df.head())
+    #logging.debug(trip_df.head())
 
-    logging.debug(len(day_df))
-    logging.debug(day_df.head())
+    #logging.debug(len(day_df))
+    #logging.debug(day_df.head())
 
-    day_trip_merge = merge_dfs(df1=trip_df, df2=day_df, common_id="DayID", output_file_name="day_trip_merge.pkl", is_loaded=True)
+    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=True)
 
 
-    day_trip_merge.to_csv(cfg.root_folder + "/output_csvs/day_trip_merge_2017.csv", index=False)
+    merge_trip_day_hh_2017.to_csv(cfg.root_folder + "/output_csvs/merge_trip_day_hh_2017.csv", index=False)
 
 

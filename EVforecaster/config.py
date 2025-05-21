@@ -32,6 +32,12 @@ day_cols_to_keep = [
     "TravelWeekDay_B01ID"
 ]
 
+household_cols_to_keep = [
+    "TWSWeek",   # Travel Week Start - Week number in calendar year
+    "HouseholdID"
+]
+
+
 # Work: 1
 # Other: 2
 # Home: 3
