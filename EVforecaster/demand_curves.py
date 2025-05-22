@@ -19,7 +19,7 @@ charging_df_path = cfg.root_folder + "/dataframes/charging_df.pkl"
 plots_folder = cfg.root_folder + "/plots/"
 charging__df = pd.read_pickle(charging_df_path)
 
-def plot_weekly_demand(demand_df, output_file_name):
+def plot_weekly_demand(demand_df, output_file_name, travel_year_label, travel_weeks_label):
     demand_df = demand_df.copy()
 
     # Removing individual id
@@ -59,7 +59,7 @@ def plot_weekly_demand(demand_df, output_file_name):
 
     plt.figure(figsize=(15,6))
 
-    plt.title(f)
+    plt.title(f"EV Charge Demand Curves for Weeks: {travel_weeks_label} or Years: {travel_year_label}")
 
     plt.plot(x, y)
 
@@ -89,10 +89,6 @@ def output_demand_curves(charging_df, suffix_long, suffix_wide, location=[1,2,3]
     if not is_loaded:
         # 1. Create a rolling ChargeStart ChargeEnd columns
         df = charging_df.copy()
-
-        # Filter Data by location and by year
-        df = df[df["ChargeLoc"].isin(location)]
-        df = df[df["TravelWeek"].isin(week_of_the_year)]
 
         df["ChargeStartRolling"] = df["ChargeStart"] + (  (df["TravelDay"]-1)*1440  )
         df["ChargeEndRolling"] = df["ChargeEnd"] +    (  (df["TravelDay"]-1)*1440  )
@@ -221,16 +217,33 @@ def output_demand_curves(charging_df, suffix_long, suffix_wide, location=[1,2,3]
         demand_df.to_csv(cfg.root_folder + f"/output_csvs/{suffix_wide}.csv", index=False)
         demand_df.to_pickle(cfg.root_folder + f"/dataframes/{suffix_wide}.pkl")
 
-        return df,  demand_df
+        
     
     if is_loaded:
         df = pd.read_pickle(cfg.root_folder + f"/dataframes/{suffix_long}.pkl")
+
+        # Filter Data by location and by year
+        df = df[df["ChargeLoc"].isin(location)]
+        df = df[df["TravelWeek"].isin(week_of_the_year)]
+
+        
         demand_df = pd.read_pickle(cfg.root_folder + f"/dataframes/{suffix_wide}.pkl")
 
         # Plot demand curves
 
     if plot:
-        plot_weekly_demand(demand_df=demand_df, output_file_name=suffix_wide)
+
+        if len(df["TravelYear"].unique()) == 1:
+            year_label = int(  df["TravelYear"].unique()[0]  )
+        else:
+            year_label = f"{int(df["TravelYear"].unique()[0])}-{int(df["TravelYear"].unique()[-1])}"
+
+        if len(df["TravelWeek"].unique()) == 1:
+            week_label = int(  df["TravelWeek"].unique()[0]  )
+        else:
+            week_label = f"{int(df["TravelWeek"].unique()[0])}-{int(df["TravelWeek"].unique()[-1])}"
+
+        plot_weekly_demand(demand_df=demand_df, output_file_name=suffix_wide, travel_year_label=year_label, travel_weeks_label=week_label)
 
     
     return df, demand_df
@@ -240,5 +253,6 @@ if __name__ == "__main__":
 
     df, demand_df = output_demand_curves(charging_df=charging__df, suffix_long="demand_all_loc_all_week_long",
                                          suffix_wide="demand_all_loc_all_week_wide", is_loaded=True, plot=True)
+
 
 

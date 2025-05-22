@@ -36,7 +36,8 @@ def trip_data_loader(trip_path, survey_years, chunksize,
                 trip_df = trip_df[trip_df["MainMode_B04ID"] == "3"]
 
                 logging.debug(f"years in chunk {i+1}: {trip_df["SurveyYear"].unique()}")
-                
+
+
                 for year in trip_df["SurveyYear"].unique():
 
                     # Filtering years to manage dataframe size
@@ -210,7 +211,27 @@ def household_data_loader(household_path,
         return household_df
 
     
-def merge_dfs(df1, df2, df3, common_id_1_2, common_id_2_3, output_file_name, is_loaded=False):
+def merge_dfs(df1, df2, df3, travel_year, common_id_1_2, common_id_2_3, output_file_name, is_loaded=False) -> pd.DataFrame:
+    """
+    merge_dfs 
+
+    Merges loaded and subsetted trip data, day data and household data
+
+    Args:
+        df1 (pd.DataFrame): Usually trip data
+        df2 (pd.DataFrame): Usually day data
+        df3 (pd.DataFrame): Usually household data
+        travel_year (list): Travel years on which to subset
+        common_id_1_2 (str): Usually "DayID"
+        common_id_2_3 (str): Usually "HouseholdID"
+        output_file_name (str): output file name (no suffix)
+        is_loaded (bool, optional): Has dataset already been loaded?. Defaults to False.
+
+    Returns:
+        pd.DataFrame: Merged Dataframe
+    """    
+
+    
 
     if not is_loaded:
         df1 = df1.copy()
@@ -218,6 +239,9 @@ def merge_dfs(df1, df2, df3, common_id_1_2, common_id_2_3, output_file_name, is_
         df3 = df3.copy()
 
         merged_df_1_2 = pd.merge(left=df1, right=df2, on=common_id_1_2)
+
+        merged_df_1_2 = merged_df_1_2[ merged_df_1_2["TravelYear"].isin(travel_year)  ]
+
         merged_df_1_2_3 = pd.merge(left=merged_df_1_2, right=df3, on=common_id_2_3)
 
         # Counting missing values
@@ -250,8 +274,8 @@ if __name__ == "__main__":
 
     logging.debug(cfg.root_folder)
     print("")
-    trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017], 
-                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=True)
+    trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017, 2018, 2019, 2020], 
+                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=False)
     
     day_df = day_data_loader(day_path=day_data,
                              output_file_name="day_df.pkl",
@@ -269,7 +293,7 @@ if __name__ == "__main__":
     #logging.debug(len(day_df))
     #logging.debug(day_df.head())
 
-    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=False)
+    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[2017], output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=False)
 
 
     merge_trip_day_hh_2017.to_csv(cfg.root_folder + "/output_csvs/merge_trip_day_hh_2017.csv", index=False)
