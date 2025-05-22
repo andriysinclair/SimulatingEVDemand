@@ -1,0 +1,3 @@
+import pytest
+
+from EVforecaster.charging_logic_auxillary import obtain_decision_to_charge, calculate_charging_session
