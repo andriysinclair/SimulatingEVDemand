@@ -4,21 +4,12 @@ import random
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use("Agg")
 import pickle
 import math
 import logging
-from charging_logic_auxillary import generate_charger, obtain_decision_to_charge, calculate_charging_session
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
-
-# Loading in df
-
-charging_df_path = cfg.root_folder + "/dataframes/charging_df.pkl"
-plots_folder = cfg.root_folder + "/plots/"
-charging_df = pd.read_pickle(charging_df_path)
-
 
 def output_full_long_df(df):
 
@@ -81,15 +72,15 @@ def output_full_long_df(df):
 
     # 3. Log mismatches if any
     if not df["MathMatch"].all():
-        logging.info(f"WARNING: Slight mathematical errors in calculation")
-        logging.info("❗Mathematical mismatch detected in some rows.")
+        logging.debug(f"WARNING: Slight mathematical errors in calculation")
+        logging.debug("❗Mathematical mismatch detected in some rows.")
         mismatches = df[~df["MathMatch"]][[
             "ChargeStart", "ChargeEnd", "TotalPowerUsed",
             "TravelDay", "ChargeStartRolling", "ChargeEndRolling",
             "ChargeStartBin", "ChargeEndBin", "5_min_demand", "MathTest"
         ]]
-        logging.info(f"{len(mismatches)} mismatches found")
-        logging.info("\n" + mismatches.to_string(index=False))
+        logging.debug(f"{len(mismatches)} mismatches found")
+        logging.debug("\n" + mismatches.to_string(index=False))
 
     #Assert all match
 
@@ -156,9 +147,7 @@ def output_wide_df(df, location=[1,2,3], week_of_the_year = list(range(1,60))):
 
     return wide_df
 
-def generate_plot(*args, total=False):
-
-    #plt.title(f"EV Charge Demand Curves for Weeks: {travel_weeks_label} or Years: {travel_year_label}")
+def generate_plot(*args, travel_weeks_label, travel_year_label, total=False):
 
     location_mapping = {1: "Work",
                         2: "Other",
@@ -208,17 +197,25 @@ def generate_plot(*args, total=False):
             plt.plot(x, y, label="Total")
 
         
+    if total:
+        plt.ylabel("Demand (kWh)")
 
-    #plt.ylabel("Demand (kWh)")
+
     plt.xticks(ticks=range(0, len(new_labels), 72), labels=new_labels[::72], rotation=45)
     plt.legend()
+
+    if not total:
+        plt.title(f"{travel_weeks_label} of {travel_year_label} by location.")
+
+    if total:
+        plt.title(f"{travel_weeks_label} of {travel_year_label} total.")
 
     plt.tight_layout()
 
     plt.grid()
 
 
-def plot_weekly_demand(charging_df, output_file_name, week_of_the_year):
+def plot_weekly_demand(charging_df, output_file_name, week_of_the_year, week_label, year_label, save_fig = True):
 
     # Transform the charging df
 
@@ -227,210 +224,64 @@ def plot_weekly_demand(charging_df, output_file_name, week_of_the_year):
 
     long_df = output_full_long_df(charging_df)
 
+    '''
+    if len(long_df["TravelYear"].unique()) == 1:
+        year_label = int(  long_df["TravelYear"].unique()[0]  )
+    else:
+        year_label = f"{int(long_df["TravelYear"].unique()[0])}-{int(long_df["TravelYear"].unique()[-1])}"
+
+    if len(long_df["TravelWeek"].unique()) == 1:
+        week_label = int(  long_df["TravelWeek"].unique()[0]  )
+    else:
+        week_label = f"{int(long_df["TravelWeek"].unique()[0])}-{int(long_df["TravelWeek"].unique()[-1])}"
+    '''
     # Subset the charging df
 
     wide_df1 = output_wide_df(long_df, location=[1], week_of_the_year=week_of_the_year)
     wide_df2 = output_wide_df(long_df, location=[2], week_of_the_year=week_of_the_year)
     wide_df3 = output_wide_df(long_df, location=[3], week_of_the_year=week_of_the_year)
-    wide_df_all = output_wide_df(long_df)
+    wide_df_all = output_wide_df(long_df, week_of_the_year=week_of_the_year)
 
     plt.figure(figsize=(15,6))
 
     plt.subplot(1,2,1)
-    generate_plot(wide_df1, wide_df2, wide_df3)
+    generate_plot(wide_df_all, travel_weeks_label=week_label, travel_year_label=year_label, total=True)
 
     plt.subplot(1,2,2)
-    generate_plot(wide_df_all, total=True)
+    generate_plot(wide_df1, wide_df2, wide_df3, travel_weeks_label=week_label, travel_year_label=year_label, total=False)
 
     plt.tight_layout()
 
-    plt.savefig(f"{plots_folder}{output_file_name}.pdf", format="pdf")
+    if save_fig:
 
-
-
-    
-
-
-
-def output_demand_curves(charging_df, suffix_long, suffix_wide, location=[1,2,3], week_of_the_year = list(range(1,60)), is_loaded=False, plot=True  ):
-    """
-    output_demand_curves 
-
-    Generate weekly charge demand curves (5-min intervals), averaged over individuals
-    for a given week of the year. That is 7*1440 = 10,080 minutes OR 2016 5-min bins.
-
-
-    Args:
-        charging_df (pd.DataFrame): Charging schedule data frame generated from charging_logic.py
-    """    
-    if not is_loaded:
-        # 1. Create a rolling ChargeStart ChargeEnd columns
-        df = charging_df.copy()
-
-        df["ChargeStartRolling"] = df["ChargeStart"] + (  (df["TravelDay"]-1)*1440  )
-        df["ChargeEndRolling"] = df["ChargeEnd"] +    (  (df["TravelDay"]-1)*1440  )
-
-        # Some charges roll over into the next week
-
-        MAX_MINS = 7*1440 # 10,080 minutes in a week
-
-        updated_rows = []
-
-        for idx, trip in df.iterrows():
-            if trip["ChargeEndRolling"] > MAX_MINS:
-                overflow = trip["ChargeEndRolling"] - MAX_MINS
-                
-
-
-                trip_clipped = trip.copy()
-                trip_clipped["ChargeEnd"] = 1440   # Max minutes in 24 hours
-                
-                trip_clipped["ChargeDuration"] = trip_clipped["ChargeEnd"] - trip_clipped["ChargeStart"]
-                trip_clipped["ChargeEndRolling"] = MAX_MINS
-                trip_clipped["TotalPowerUsed"] = trip_clipped["ChargeDuration"]/60 * trip_clipped["ChargingRate"]
-
-                updated_rows.append(trip_clipped)
-
-                # Create a new row
-                trip_overflow = trip.copy()
-                trip_overflow["ChargeStartRolling"] = 0
-                trip_overflow["ChargeEndRolling"] = overflow
-                trip_overflow["ChargeStart"] = 0
-                trip_overflow["ChargeEnd"] = trip_overflow["ChargeEnd"] - 1440
-                trip_overflow["ChargeDuration"] = trip_overflow["ChargeEnd"]
-
-                trip_overflow["TravelWeek"] += 1
-                trip_overflow["TravelDay"] = math.ceil(overflow/1440)
-                trip_overflow["TotalPowerUsed"] = trip_overflow["ChargeDuration"]/60 * trip_overflow["ChargingRate"]
-
-                updated_rows.append(trip_overflow)
-
-            else:
-                updated_rows.append(trip)
-
-        df = pd.DataFrame(updated_rows).reset_index(drop=True)
-
-
-        df["ChargeStartBin"] = df["ChargeStartRolling"]/5
-        df["ChargeEndBin"] = df["ChargeEndRolling"]/5
-
-        df["5_min_demand"] = df["ChargingRate"] / 60 * 5
-
-        # Test wether we can get TotalPowerUsed again using the 5-minute power consumption
-
-        df["MathTest"] = (df["ChargeEnd"] - df["ChargeStart"]) * df["5_min_demand"]/5
-
-        df["MathMatch"] = np.isclose(df["MathTest"], df["TotalPowerUsed"], rtol=1e-1)
-
-        # 3. Log mismatches if any
-        if not df["MathMatch"].all():
-            logging.info(f"WARNING: Slight mathematical errors in calculation")
-            logging.info("❗Mathematical mismatch detected in some rows.")
-            mismatches = df[~df["MathMatch"]][[
-                "ChargeStart", "ChargeEnd", "TotalPowerUsed",
-                "TravelDay", "ChargeStartRolling", "ChargeEndRolling",
-                "ChargeStartBin", "ChargeEndBin", "5_min_demand", "MathTest"
-            ]]
-            logging.info(f"{len(mismatches)} mismatches found")
-            logging.info("\n" + mismatches.to_string(index=False))
-
-        #Assert all match
-
-        #assert df["MathMatch"].all(), "Mismatch between calculated and actual TotalPowerUsed!"
-
-        df.to_csv(cfg.root_folder + f"/output_csvs/{suffix_long}.csv", index=False)
-        df.to_pickle(cfg.root_folder + f"/dataframes/{suffix_long}.pkl")
-
-        # Build a blank df in wide format with the individual and each of his binned 5-minutly consumption
-
-        bin_edges = np.arange(0, 7*1440+5, 5)
-
-        #logging.debug(bin_edges)
-
-        bin_labels = [f"{start}-{start+5}" for start in bin_edges[:-1]] 
-
-        logging.debug(f"first 5 bin labels: {bin_labels[:5]}")
-        logging.debug(f"final 5 bin lavels: {bin_labels[-5:]}")
-
-        demand_df = pd.DataFrame(columns=["IndividualID"] + bin_labels)
-
-        ####
-
-        unique_is = df["IndividualID"].unique()
-
-        all_rows = []
-
-        for i in unique_is:
-
-            i_df = df[df["IndividualID"] == i]
-
-            # start a new row with all 0s
-            
-            demand_row = {label: 0 for label in bin_labels}
-            demand_row["IndividualID"] = i
-
-            for idx, trip in i_df.iterrows():
-
-                #get intiger bin range for this trip
-                logging.debug(f"Individual: {i}")
-                start_bin = int(trip["ChargeStartBin"])
-                logging.debug(f"Start bin: {start_bin}")
-                end_bin = int(trip["ChargeEndBin"])
-                logging.debug(f"End bin: {end_bin}")
-
-                for b in range(start_bin, end_bin):
-                    bin_label = f"{b*5}-{b*5+5}"
-                    
-                    demand_row[bin_label] += trip["5_min_demand"]
-
-                #logging.debug(f"bin label: {bin_label}")
-                
-            # append row to all rows
-            all_rows.append(demand_row)
-
-
-        demand_df = pd.DataFrame(all_rows)
-
-        demand_df.to_csv(cfg.root_folder + f"/output_csvs/{suffix_wide}.csv", index=False)
-        demand_df.to_pickle(cfg.root_folder + f"/dataframes/{suffix_wide}.pkl")
-
-        
-    
-    if is_loaded:
-        df = pd.read_pickle(cfg.root_folder + f"/dataframes/{suffix_long}.pkl")
-
-        # Filter Data by location and by year
-        df = df[df["ChargeLoc"].isin(location)]
-        df = df[df["TravelWeek"].isin(week_of_the_year)]
-
-
-        demand_df = pd.read_pickle(cfg.root_folder + f"/dataframes/{suffix_wide}.pkl")
-
-        # Plot demand curves
-
-    if plot:
-
-        if len(df["TravelYear"].unique()) == 1:
-            year_label = int(  df["TravelYear"].unique()[0]  )
-        else:
-            year_label = f"{int(df["TravelYear"].unique()[0])}-{int(df["TravelYear"].unique()[-1])}"
-
-        if len(df["TravelWeek"].unique()) == 1:
-            week_label = int(  df["TravelWeek"].unique()[0]  )
-        else:
-            week_label = f"{int(df["TravelWeek"].unique()[0])}-{int(df["TravelWeek"].unique()[-1])}"
-
-        plot_weekly_demand(demand_df=demand_df, output_file_name=suffix_wide, travel_year_label=year_label, travel_weeks_label=week_label)
-
-    
-    return df, demand_df
+        plt.savefig(f"{plots_folder}{output_file_name}.pdf", format="pdf")
 
 
 if __name__ == "__main__":
 
+    matplotlib.use("Agg")
+
+    # Loading in df
+
+    charging_df_path = cfg.root_folder + "/dataframes/charging_df.pkl"
+    plots_folder = cfg.root_folder + "/plots/"
+    charging_df = pd.read_pickle(charging_df_path)
+
     #df, demand_df = output_demand_curves(charging_df=charging__df, suffix_long="demand_all_loc_all_week_long",
     #                                     suffix_wide="demand_all_loc_all_week_wide", is_loaded=True, plot=True)
 
-    plot_weekly_demand(charging_df=charging_df, output_file_name="plot", week_of_the_year=list(range(1,60)))
+    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_total", week_of_the_year=list(range(2,53)), week_label="Full Year", year_label=2017)
+    #plot_weekly_demand(charging_df=charging_df, output_file_name="plot_total", week_of_the_year=list(range(1,60)))
 
+    weeks_winter = [49,50,51,52] + list(range(1,10))
+    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_winter", week_of_the_year=weeks_winter, week_label="Winter", year_label=2017)
+
+    weeks_spring = list(range(10,22))
+    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_spring", week_of_the_year=weeks_spring, week_label="Spring", year_label=2017)
+
+    weeks_summer = list(range(22,36))
+    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_summer", week_of_the_year=weeks_summer, week_label="Summer", year_label=2017)
+
+    weeks_autumn = list(range(36,49))
+    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_autumn", week_of_the_year=weeks_autumn, week_label="Autumn", year_label=2017)
 

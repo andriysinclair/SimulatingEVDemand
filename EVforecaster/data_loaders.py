@@ -9,7 +9,7 @@ day_data = cfg.root_folder + "/data/day_eul_2002-2023.tab"
 household_data =cfg.root_folder + "/data/household_eul_2002-2023.tab"
 
 # Set up basic configuration for logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 def trip_data_loader(trip_path, survey_years, chunksize, 
@@ -230,9 +230,6 @@ def merge_dfs(df1, df2, df3, travel_year, common_id_1_2, common_id_2_3, output_f
     Returns:
         pd.DataFrame: Merged Dataframe
     """    
-
-    
-
     if not is_loaded:
         df1 = df1.copy()
         df2 = df2.copy()
@@ -253,6 +250,9 @@ def merge_dfs(df1, df2, df3, travel_year, common_id_1_2, common_id_2_3, output_f
         # Dropping all rows with missing values
         merged_df_1_2_3 = merged_df_1_2_3.dropna()
 
+        # Making further transformations
+
+
         with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
             pickle.dump(merged_df_1_2_3, f)   
 
@@ -270,12 +270,52 @@ def merge_dfs(df1, df2, df3, travel_year, common_id_1_2, common_id_2_3, output_f
 
         return merged_df_1_2_3
     
+def apply_preparatory(df):
+    df = df.copy()
+
+    individual_ids = df["IndividualID"].unique()
+
+    df_by_i = []
+
+    for i in individual_ids:
+
+        i_df = df[df["IndividualID"]==i]
+        i_df = i_df.copy()
+
+        # Calculating time at trip end location
+
+        # bring trip start rolling forward
+        i_df["TripStartRolling+1"] = i_df["TripStartRolling"].shift(-1)
+
+        # Calculate time at end location
+        i_df["TimeEndLoc"] = i_df["TripStartRolling+1"] - i_df["TripEndRolling"] 
+
+        i_df["Distance+1"] = i_df["TripDisExSW"].shift(-1)
+
+        #Correct TWSweek to account for trips crossing over into new weeks
+        i_df["WeekDayDiff"] = i_df["TravelWeekDay_B01ID"].diff()
+
+        i_df["WeekRollover"] = (i_df["WeekDayDiff"] < 0).astype(int)
+        i_df["WeekRollover"] = i_df["WeekRollover"].cumsum()
+
+        i_df["TWSWeekNew"] = i_df["TWSWeek"] + i_df["WeekRollover"]
+
+        logging.debug(i_df[["TravelWeekDay_B01ID", "WeekDayDiff", "WeekRollover", "TWSWeek", "TWSWeekNew"]])
+
+        df_by_i.append(i_df)
+
+    pd.concat(df_by_i)
+
+    return df_by_i
+
+
+
 if __name__ == "__main__":
 
     logging.debug(cfg.root_folder)
     print("")
     trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017, 2018, 2019, 2020], 
-                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=False)
+                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=True)
     
     day_df = day_data_loader(day_path=day_data,
                              output_file_name="day_df.pkl",
@@ -293,9 +333,12 @@ if __name__ == "__main__":
     #logging.debug(len(day_df))
     #logging.debug(day_df.head())
 
-    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[2017], output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=False)
+    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[2017], output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=True)
 
 
     merge_trip_day_hh_2017.to_csv(cfg.root_folder + "/output_csvs/merge_trip_day_hh_2017.csv", index=False)
+
+
+    prep_df = apply_preparatory(merge_trip_day_hh_2017)
 
 
