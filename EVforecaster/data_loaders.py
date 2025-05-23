@@ -9,7 +9,7 @@ day_data = cfg.root_folder + "/data/day_eul_2002-2023.tab"
 household_data =cfg.root_folder + "/data/household_eul_2002-2023.tab"
 
 # Set up basic configuration for logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def trip_data_loader(trip_path, survey_years, chunksize, 
@@ -27,49 +27,38 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         merged_chunks = []
 
-        for i,trip_df in enumerate(pd.read_csv(trip_path, sep="\t", chunksize=chunksize, dtype=str)):
-            
-            if "3" in trip_df["MainMode_B04ID"].unique():
+        for i,chunk in enumerate(pd.read_csv(trip_path, sep="\t", chunksize=chunksize, dtype=str)):
 
-                # Filter by car trips only
+            chunk = chunk[chunk["MainMode_B04ID"] == "3"]
+            chunk = chunk[chunk["SurveyYear"].isin(survey_years)]
 
-                trip_df = trip_df[trip_df["MainMode_B04ID"] == "3"]
+            if not chunk.empty:
 
-                logging.debug(f"years in chunk {i+1}: {trip_df["SurveyYear"].unique()}")
+                chunk = chunk[trip_cols_to_keep]
 
+                # Converting all columns to int type
 
-                for year in trip_df["SurveyYear"].unique():
+                chunk = chunk.astype(float)
 
-                    # Filtering years to manage dataframe size
-                    
-                    if year in survey_years:
+                merged_chunks.append(chunk)
 
-                        chunk = trip_df[trip_df["SurveyYear"].isin(survey_years)]
+                logging.debug(f"chunk {i} has been saved")
 
-                        chunk = chunk[trip_cols_to_keep]
-
-                        # Converting all columns to int type
-
-                        chunk = chunk.astype(float)
-
-                        merged_chunks.append(chunk)
-
-
-                    else:
-                        
-                        # year in survey_years not found in chunk
-
-                        continue
 
             else:
-                
-                # Car trips not found in chunk
+                        
+                # year in survey_years not found in chunk
+                logging.debug(f"chunk {i} has been skipped")
 
                 continue
+
         
         # Merging all gathered chunks
 
         merged_df = pd.concat(merged_chunks, ignore_index=True)
+
+        logging.debug(f"Total rows before dropping duplicates: {len(merged_df)}")
+        logging.debug(f"Exact duplicate rows: {merged_df.duplicated().sum()}")
 
         # Dropping missing purpouse values and mapping purpouses
 
@@ -270,7 +259,7 @@ def merge_dfs(df1, df2, df3, travel_year, common_id_1_2, common_id_2_3, output_f
 
         return merged_df_1_2_3
     
-def apply_preparatory(df):
+def apply_preparatory(df, output_file_name):
     df = df.copy()
 
     individual_ids = df["IndividualID"].unique()
@@ -300,13 +289,15 @@ def apply_preparatory(df):
 
         i_df["TWSWeekNew"] = i_df["TWSWeek"] + i_df["WeekRollover"]
 
-        logging.debug(i_df[["TravelWeekDay_B01ID", "WeekDayDiff", "WeekRollover", "TWSWeek", "TWSWeekNew"]])
+        #logging.debug(i_df[["TravelWeekDay_B01ID", "WeekDayDiff", "WeekRollover", "TWSWeek", "TWSWeekNew"]])
 
         df_by_i.append(i_df)
 
-    pd.concat(df_by_i)
+    df = pd.concat(df_by_i)
 
-    return df_by_i
+    df.to_pickle(cfg.root_folder + f"/dataframes/{output_file_name}")
+
+    return df
 
 
 
@@ -316,6 +307,11 @@ if __name__ == "__main__":
     print("")
     trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017, 2018, 2019, 2020], 
                                chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=True)
+    
+    trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df.csv", index=False)
+    
+    print(trip_df.columns)
+    print(len(trip_df[trip_df["SurveyYear"]==2017]))
     
     day_df = day_data_loader(day_path=day_data,
                              output_file_name="day_df.pkl",
@@ -333,12 +329,13 @@ if __name__ == "__main__":
     #logging.debug(len(day_df))
     #logging.debug(day_df.head())
 
-    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[2017], output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=True)
+    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[2017], output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=False)
 
 
     merge_trip_day_hh_2017.to_csv(cfg.root_folder + "/output_csvs/merge_trip_day_hh_2017.csv", index=False)
 
 
-    prep_df = apply_preparatory(merge_trip_day_hh_2017)
+    prep_df = apply_preparatory(merge_trip_day_hh_2017, output_file_name="Ready_to_model_df.pkl")
+    prep_df.to_csv(cfg.root_folder + "/output_csvs/Ready_to_model_df.csv", index=False)
 
 

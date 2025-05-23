@@ -23,7 +23,8 @@ trip_cols_to_keep = [
     "TripOrigGOR_B02ID",
     "TripDestGOR_B02ID",
     "TripPurpFrom_B01ID",
-    "TripPurpTo_B01ID"
+    "TripPurpTo_B01ID",
+    "SurveyYear"
 ]
 
 day_cols_to_keep = [
