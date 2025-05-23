@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Loading in df
 
-full_df_path = cfg.root_folder + "/dataframes/merge_trip_day_hh_2017.pkl"
+full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df.pkl"
 full_df = pd.read_pickle(full_df_path)
 
 
@@ -58,25 +58,9 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
 
             # Calculating time at trip end location
 
-            # bring trip start rolling forward
-            i_df["TripStartRolling+1"] = i_df["TripStartRolling"].shift(-1)
-
-            # Calculate time at end location
-            i_df["TimeEndLoc"] = i_df["TripStartRolling+1"] - i_df["TripEndRolling"] 
-
-            i_df["Distance+1"] = i_df["TripDisExSW"].shift(-1)
             i_df["Req_charge+1"] = (i_df["Distance+1"] * energy_efficiency)/1000
 
-            #Correct TWSweek to account for trips crossing over into new weeks
-            i_df["WeekDayDiff"] = i_df["TravelWeekDay_B01ID"].diff()
-
-            i_df["WeekRollover"] = (i_df["WeekDayDiff"] < 0).astype(int)
-            i_df["WeekRollover"] = i_df["WeekRollover"].cumsum()
-
-            i_df["TWSWeekNew"] = i_df["TWSWeek"] + i_df["WeekRollover"]
-
-            logging.debug(i_df[["TravelWeekDay_B01ID", "WeekDayDiff", "WeekRollover", "TWSWeek", "TWSWeekNew"]])
-
+            #logging.debug(i_df[["TravelWeekDay_B01ID", "WeekDayDiff", "WeekRollover", "TWSWeek", "TWSWeekNew"]])
 
             # Working row wise to model charging decisions and change SOC
             SOC_list = [np.round( init_SOC, 2) ]

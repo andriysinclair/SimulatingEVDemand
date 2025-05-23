@@ -45,7 +45,7 @@ household_cols_to_keep = [
 
 trip_purpouse_mapping = {
     1: 1,   # Work
-    2: 1,   # In course of work
+    2: 2,   # In course of work
     3: 2,   # Education
     4: 2,   # Food shopping
     5: 2,   # Non food shopping

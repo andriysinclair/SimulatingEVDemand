@@ -306,7 +306,7 @@ if __name__ == "__main__":
     logging.debug(cfg.root_folder)
     print("")
     trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017, 2018, 2019, 2020], 
-                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=True)
+                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=False)
     
     trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df.csv", index=False)
     

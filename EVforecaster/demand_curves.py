@@ -264,8 +264,11 @@ if __name__ == "__main__":
     # Loading in df
 
     charging_df_path = cfg.root_folder + "/dataframes/charging_df.pkl"
+
     plots_folder = cfg.root_folder + "/plots/"
     charging_df = pd.read_pickle(charging_df_path)
+
+    charging_df.to_csv(cfg.root_folder + "/output_csvs/charging_df.csv", index=False)
 
     #df, demand_df = output_demand_curves(charging_df=charging__df, suffix_long="demand_all_loc_all_week_long",
     #                                     suffix_wide="demand_all_loc_all_week_wide", is_loaded=True, plot=True)
