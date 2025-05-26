@@ -17,9 +17,28 @@ full_df = pd.read_pickle(full_df_path)
 
 def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energy_efficiency=cfg.energy_efficiency,
                     is_loaded=False, test_index=None,
-                    min_stop_time_to_charge = cfg.min_stop_time_to_charge,
-                    SOC_charging_prob = cfg.SOC_charging_prob,
-                    charging_rates = cfg.charging_rates):
+                    charging_rates = cfg.charging_rates,
+                    drop_from_charging_df = cfg.drop_from_charging_df) -> pd.DataFrame:
+    """
+    charging_logic 
+
+    Takes a transformed travel df and paramaters on charging rates, battery capacities etc. from config.py
+    and uses them to create simulated charging schedules   
+
+    Args:
+        df (pd.DataFrame): Transformed travel DF
+        output_file_name (str): Named of saved file. Saves as pickle to dataframes folder and as csv to output_csvs folder
+        battery_size (int, optional): Battery Size (KW). Defaults to cfg.battery_size.
+        energy_efficiency (int, optional): Energy efficiency (KW/mile). Defaults to cfg.energy_efficiency.
+        is_loaded (bool, optional): True if charging schedules have been generated, then simply loades from /dataframes. Defaults to False.
+        test_index (int, optional): Number of individuals on which to test (used for debugging). Defaults to None.
+        min_stop_time_to_charge (int, optional): Minimum amount of time individual needs to stop in order to consider charging. Defaults to cfg.min_stop_time_to_charge.
+        SOC_charging_prob (func, optional): Probabilistic function to determine charging likelihood based off SOC. Defaults to cfg.SOC_charging_prob.
+        charging_rates (int, optional): Charging Rate (kWh). Defaults to cfg.charging_rates.
+
+    Returns:
+        pd.DataFrame: Charging schedules appended to transformed travel df/
+    """    
 
     # Adding nodes with available chargers
 
@@ -31,7 +50,7 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
 
         individual_ids = df["IndividualID"].unique()
 
-        charging_dict = {"IndividualID": [],
+        charging_dict = {"TripID": [],
                          "TotalPowerUsed": [],
                          "ChargeStart": [],
                          "ChargeEnd": [],
@@ -73,6 +92,7 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
             for idx, row in i_df.iterrows():
 
                 # Obtain all relevant parameters from that trip
+                trip_id = row["TripID"]
                 available_charger = row["IsCharger"]
                 end_location = row["TripEndLoc"]
                 charging_rate = charging_rates[row["TripEndLoc"]]
@@ -143,7 +163,8 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
 
 
                     # Populate dictionary
-                    charging_dict["IndividualID"].append(i)
+                    #charging_dict["IndividualID"].append(i)
+                    charging_dict["TripID"].append(trip_id)
                     charging_dict["TravelYear"].append(travel_year)
                     charging_dict["TravelWeek"].append(travel_week)
                     charging_dict["TravelDay"].append(travel_day)
@@ -181,13 +202,18 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
             
 
         charging_df = pd.DataFrame(charging_dict)
+
+        charging_df = pd.merge(charging_df, df, on="TripID")
         logging.info(f"Total trips: {total_trips}")
         logging.info(f"Negative trips: {negative_trips}")
         logging.info(f"% negative trips: {negative_trips/total_trips*100:.2f}%")
 
+
         # Dump charging schedules to pickle
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "wb") as f:
             pickle.dump(charging_df, f)   
+
+        charging_df.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False)
 
         logging.info(f"File saved to {output_file_name}")
 
@@ -197,6 +223,6 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
         
 if __name__ == "__main__":
 
-    test = charging_logic(full_df, output_file_name="charging_df.pkl", test_index=None)
+    test = charging_logic(full_df, output_file_name="charging_df", test_index=None)
 
-    test.to_csv(cfg.root_folder + "/output_csvs/charging_df_2017.csv", index=False)
+    

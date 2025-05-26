@@ -25,6 +25,7 @@ trip_cols_to_keep = [
     "TripPurpFrom_B01ID",
     "TripPurpTo_B01ID",
     "SurveyYear"
+    
 ]
 
 day_cols_to_keep = [
@@ -36,6 +37,19 @@ day_cols_to_keep = [
 household_cols_to_keep = [
     "TWSWeek",   # Travel Week Start - Week number in calendar year
     "HouseholdID"
+]
+
+drop_from_charging_df = [
+    "TripID",
+    "DayID",
+    "HouseholdID",
+    "PSUID",
+    "PersNo",
+    "TripOrigGOR_B02ID",
+    "TripDestGOR_B02ID",
+    "TripStartLoc",
+    "SurveyYear",
+    "TripType"
 ]
 
 
