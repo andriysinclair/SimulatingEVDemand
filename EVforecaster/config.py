@@ -9,22 +9,20 @@ import numpy as np
 root_folder = str(Path(__file__).parent.parent)
 
 trip_cols_to_keep = [
-    "TripID",
     "DayID",
+    "TripID",
     "IndividualID",
     "HouseholdID",
-    "PSUID",
-    "PersNo",
     "TravDay",
     "JourSeq",
     "TripStart",
     "TripEnd",
     "TripDisExSW",
-    "TripOrigGOR_B02ID",
-    "TripDestGOR_B02ID",
+    #"TripOrigGOR_B02ID",
+    #"TripDestGOR_B02ID",
     "TripPurpFrom_B01ID",
     "TripPurpTo_B01ID",
-    "SurveyYear"
+    #"SurveyYear"
     
 ]
 
@@ -39,18 +37,6 @@ household_cols_to_keep = [
     "HouseholdID"
 ]
 
-drop_from_charging_df = [
-    "TripID",
-    "DayID",
-    "HouseholdID",
-    "PSUID",
-    "PersNo",
-    "TripOrigGOR_B02ID",
-    "TripDestGOR_B02ID",
-    "TripStartLoc",
-    "SurveyYear",
-    "TripType"
-]
 
 
 # Work: 1

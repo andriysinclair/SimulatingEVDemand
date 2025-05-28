@@ -12,8 +12,10 @@ household_data =cfg.root_folder + "/data/household_eul_2002-2023.tab"
 logging.basicConfig(level=logging.DEBUG)
 
 
-def trip_data_loader(trip_path, survey_years, chunksize, 
+def trip_data_loader(survey_years,
                      output_file_name, 
+                     chunksize = 100000,
+                     trip_path = trip_data,
                      trip_cols_to_keep = cfg.trip_cols_to_keep, 
                      trip_purpouse_mapping = cfg.trip_purpouse_mapping,
                      trip_type_mapping = cfg.trip_type_mapping,
@@ -98,10 +100,13 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         # Dumping to pickle
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "wb") as f:
             pickle.dump(merged_df, f)   
 
-        logging.info(f"File saved to {output_file_name}")
+        # Dumping to csv
+        merged_df.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False)
+
+        logging.debug(f"File saved to {output_file_name}")
 
         for col in merged_df.columns:
             logging.debug(col)
@@ -116,7 +121,7 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         # If data has already been loaded. Loading pickle
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "rb") as f:
             merged_df = pickle.load(f)   
 
         logging.info(f"loading {output_file_name}")
@@ -130,8 +135,8 @@ def trip_data_loader(trip_path, survey_years, chunksize,
 
         return merged_df
     
-def day_data_loader(day_path, 
-                     output_file_name, 
+def day_data_loader( output_file_name, 
+                     day_path = day_data,
                      day_cols_to_keep = cfg.day_cols_to_keep, 
                      is_loaded = False) -> pd.DataFrame:
     
@@ -148,18 +153,20 @@ def day_data_loader(day_path,
 
         logging.debug(day_df.dtypes)
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
-            pickle.dump(day_df, f)   
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "wb") as f:
+            pickle.dump(day_df, f)  
+
+        day_df.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False) 
 
         logging.debug(day_df.dtypes)
 
-        logging.info(f"File saved to {output_file_name}")
+        logging.debug(f"File saved to {output_file_name}")
 
         return day_df
     
     if is_loaded:
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "rb") as f:
             day_df = pickle.load(f)   
 
         logging.debug(day_df.dtypes)
@@ -168,8 +175,8 @@ def day_data_loader(day_path,
 
         return day_df
     
-def household_data_loader(household_path,
-                          output_file_name,
+def household_data_loader(output_file_name,
+                          household_path = household_data,
                           household_cols_to_keep = cfg.household_cols_to_keep,
                           is_loaded=False):
     
@@ -181,16 +188,18 @@ def household_data_loader(household_path,
 
         logging.debug(household_df.dtypes)
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "wb") as f:
             pickle.dump(household_df, f)   
 
-        logging.info(f"File saved to {output_file_name}")
+        household_df.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False)
+
+        logging.debug(f"File saved to {output_file_name}")
 
         return household_df
     
     if is_loaded:
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "rb") as f:
             household_df = pickle.load(f)   
 
         logging.debug(household_df.dtypes)
@@ -242,17 +251,19 @@ def merge_dfs(df1, df2, df3, travel_year, common_id_1_2, common_id_2_3, output_f
         # Making further transformations
 
 
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "wb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "wb") as f:
             pickle.dump(merged_df_1_2_3, f)   
 
-        logging.info(f"File saved to {output_file_name}")
+        merged_df_1_2_3.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False)
+
+        logging.debug(f"File saved to {output_file_name}")
 
 
 
         return merged_df_1_2_3
 
     else:
-        with open(cfg.root_folder + f"/dataframes/{output_file_name}", "rb") as f:
+        with open(cfg.root_folder + f"/dataframes/{output_file_name}.pkl", "rb") as f:
             merged_df_1_2_3 = pickle.load(f)  
 
         logging.info(f"loading {output_file_name}")
@@ -295,9 +306,42 @@ def apply_preparatory(df, output_file_name):
 
     df = pd.concat(df_by_i)
 
-    df.to_pickle(cfg.root_folder + f"/dataframes/{output_file_name}")
+    df.to_pickle(cfg.root_folder + f"/dataframes/{output_file_name}.pkl")
+
+    df.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False)
 
     return df
+
+
+def data_loader_end_to_end(travel_year):
+    survey_years = []
+    survey_years.append(travel_year)
+    survey_years.append(travel_year+1)
+    survey_years.append(travel_year+2)
+
+    survey_years = [str(sy) for sy in survey_years]
+
+    trip_df = trip_data_loader(survey_years=survey_years, output_file_name=f"trip_df_{travel_year}", is_loaded=False)
+
+    logging.info(f"Trip data loaded!")
+
+    day_df = day_data_loader(output_file_name="day_df", is_loaded=False)
+
+    logging.info("Day data loaded")
+
+    household_df = household_data_loader(output_file_name="household_df", is_loaded=False)
+
+    logging.info(f"household data loaded")
+
+    merged_df = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[travel_year], output_file_name=f"merge_df_{travel_year}.pkl", is_loaded=False)
+
+    logging.info(f"Datasets merged")
+
+    final_df = apply_preparatory(merged_df, output_file_name=f"Ready_to_model_df_{travel_year}")
+
+    logging.info(f"Final DF loaded")
+
+    return final_df
 
 
 
@@ -309,9 +353,6 @@ if __name__ == "__main__":
                                chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=False)
     
     trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df.csv", index=False)
-    
-    print(trip_df.columns)
-    print(len(trip_df[trip_df["SurveyYear"]==2017]))
     
     day_df = day_data_loader(day_path=day_data,
                              output_file_name="day_df.pkl",
