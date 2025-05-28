@@ -347,36 +347,6 @@ def data_loader_end_to_end(travel_year):
 
 if __name__ == "__main__":
 
-    logging.debug(cfg.root_folder)
-    print("")
-    trip_df = trip_data_loader(trip_path=trip_data, survey_years=[2017, 2018, 2019, 2020], 
-                               chunksize=100000, output_file_name="trip_df_2017.pkl", is_loaded=False)
-    
-    trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df.csv", index=False)
-    
-    day_df = day_data_loader(day_path=day_data,
-                             output_file_name="day_df.pkl",
-                             is_loaded=True)
-    
-    household_df = household_data_loader(household_path=household_data,
-                                         output_file_name="household_df.pkl",
-                                         is_loaded=True)
-
-    
-    #trip_df.to_csv(cfg.root_folder + "/output_csvs/trip_df_2017.csv", index=False)
-
-    #logging.debug(trip_df.head())
-
-    #logging.debug(len(day_df))
-    #logging.debug(day_df.head())
-
-    merge_trip_day_hh_2017 = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[2017], output_file_name="merge_trip_day_hh_2017.pkl", is_loaded=False)
-
-
-    merge_trip_day_hh_2017.to_csv(cfg.root_folder + "/output_csvs/merge_trip_day_hh_2017.csv", index=False)
-
-
-    prep_df = apply_preparatory(merge_trip_day_hh_2017, output_file_name="Ready_to_model_df.pkl")
-    prep_df.to_csv(cfg.root_folder + "/output_csvs/Ready_to_model_df.csv", index=False)
+    df = data_loader_end_to_end(2017)
 
 
