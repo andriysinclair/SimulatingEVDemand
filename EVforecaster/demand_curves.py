@@ -12,11 +12,28 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 def output_full_long_df(df):
+    """
+    output_full_long_df 
+
+    Adds necessary charging-related columns to charging_df that are needed to later make
+    the wide transformation
+
+    Args:
+        df (pd.DataFrame): charging_df
+
+    Returns:
+        pd.DataFrame: complete df ready for wide transformation
+    """    
+
+    # Creating rolling columns from 0 - 10,080 (minutes in a week)
 
     df = df.copy()
 
     df["ChargeStartRolling"] = df["ChargeStart"] + (  (df["TravelDay"]-1)*1440  )
     df["ChargeEndRolling"] = df["ChargeEnd"] +    (  (df["TravelDay"]-1)*1440  )
+
+    if "ChargeDuration" not in df.columns:
+        df["ChargeDuration"] = df["ChargeEndRolling"] - df["ChargeStartRolling"]
 
     # Some charges roll over into the next week
 
@@ -26,6 +43,8 @@ def output_full_long_df(df):
 
     for idx, trip in df.iterrows():
         if trip["ChargeEndRolling"] > MAX_MINS:
+            # If a trip has gone into the next week
+
             overflow = trip["ChargeEndRolling"] - MAX_MINS
             
 
@@ -47,6 +66,7 @@ def output_full_long_df(df):
             trip_overflow["ChargeEnd"] = trip_overflow["ChargeEnd"] - 1440
             trip_overflow["ChargeDuration"] = trip_overflow["ChargeEnd"]
 
+            # Increase travel week by 1
             trip_overflow["TravelWeek"] += 1
             trip_overflow["TravelDay"] = math.ceil(overflow/1440)
             trip_overflow["TotalPowerUsed"] = trip_overflow["ChargeDuration"]/60 * trip_overflow["ChargingRate"]

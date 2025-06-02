@@ -9,16 +9,11 @@ from charging_logic_auxillary import generate_charger, obtain_decision_to_charge
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
 
-# Loading in df
-
-full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df.pkl"
-full_df = pd.read_pickle(full_df_path)
-
 
 def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energy_efficiency=cfg.energy_efficiency,
                     is_loaded=False, test_index=None,
                     charging_rates = cfg.charging_rates,
-                    drop_from_charging_df = cfg.drop_from_charging_df) -> pd.DataFrame:
+                    ) -> pd.DataFrame:
     """
     charging_logic 
 
@@ -222,6 +217,11 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
 
         
 if __name__ == "__main__":
+
+    # Loading in df
+
+    full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df_2017.pkl"
+    full_df = pd.read_pickle(full_df_path)
 
     test = charging_logic(full_df, output_file_name="charging_df", test_index=None)
 
