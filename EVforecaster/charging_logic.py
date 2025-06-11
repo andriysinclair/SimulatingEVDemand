@@ -39,12 +39,15 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
 
     df = df.copy()
 
+    # Set chargers given the location and probability of charger existing at that location
     df["IsCharger"] = df["TripEndLoc"].apply(lambda x: generate_charger(x))
 
     if not is_loaded:
 
+        # Looping over individuals
         individual_ids = df["IndividualID"].unique()
 
+        # Adding new variables based on charge
         charging_dict = {"TripID": [],
                          "TotalPowerUsed": [],
                          "ChargeStart": [],
@@ -64,13 +67,14 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
             i_df = df[df["IndividualID"]==i]
             i_df = i_df.copy()
 
-            # Setting initial SOC uniformly distributed
-
+            # Obtaining the required charge for first trip
             first_trip_req_charge = (i_df.iloc[0]["TripDisExSW"]* energy_efficiency)/1000
+
+            # Setting initital SOC with uniformally with the following bounds
             init_SOC = random.uniform(first_trip_req_charge, battery_size)
             logging.debug(f"Intitial SOC: {init_SOC}")
 
-            # Calculating time at trip end location
+            # Calculating energy required for the next trip
 
             i_df["Req_charge+1"] = (i_df["Distance+1"] * energy_efficiency)/1000
 
@@ -99,10 +103,12 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
                 travel_week = row["TWSWeekNew"]
                 travel_year = row["TravelYear"]
 
-                # If current SOC is negative we move onto next person
+                # If current SOC is negative at any point we move on to the next person
                 if current_SOC < 0:
+                    negative_trips += 1
                     break
 
+                # Bool to inform us if it is the last trip
                 if idx == i_df.index[-1]:
                     last_trip_flag = True
                 else:
@@ -114,9 +120,6 @@ def charging_logic(df, output_file_name,  battery_size = cfg.battery_size, energ
 
                 total_trips += 1
                 
-                if current_SOC < 0:
-                    negative_trips += 1
-
                 # Obtain individuals decision to charge
 
                 decision_to_charge = obtain_decision_to_charge(SOC=current_SOC, available_charger=available_charger,

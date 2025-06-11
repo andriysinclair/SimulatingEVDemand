@@ -2,8 +2,13 @@ import config as cfg
 import pandas as pd
 import math
 import matplotlib.pyplot as plt
+import logging
+import numpy as np
 
 from demand_curves import output_wide_df, generate_plot
+
+# Set up basic configuration for logging
+logging.basicConfig(level=logging.INFO)
 
 def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, plots_folder, output_file_name):
     """
@@ -32,7 +37,7 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
     df["TravelDay"] = df["BatteryChargeStartDate"].dt.day_of_week+1
 
 
-    df["ChargingRate"] = 3.6
+    #df["ChargingRate"] = 3.6
 
     df["ChargeLoc"] = df["ParticipantID"].apply(lambda x: 1 if x[:2] == "YH" else 3)
 
@@ -93,10 +98,22 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
     df["ChargeStartBin"] = df["ChargeStartRolling"]/5
     df["ChargeEndBin"] = df["ChargeEndRolling"]/5
 
-    df["5_min_demand"] = df["TotalPowerUsed"] / (df["ChargeEndBin"] - df["ChargeStartBin"])
+    # To avoid 0 division error
+    denominator = df["ChargeEndBin"] - df["ChargeStartBin"]
+    df["5_min_demand"] = np.where(
+        denominator > 0,
+        df["TotalPowerUsed"] / denominator,
+        np.nan
+    )
 
-    wide_df1 = output_wide_df(df, location=[1], week_of_the_year=week_of_the_year)
-    wide_df3 = output_wide_df(df, location=[3], week_of_the_year=week_of_the_year)
+    # Checking for any faulty charges
+    df.loc[df["Starting SoC (of 12)"] == df["Ending SoC (of 12)"], "5_min_demand"] = np.nan
+
+
+    logging.info(f"Average 5 min demand: {df["5_min_demand"].mean()}")
+
+    #wide_df1 = output_wide_df(df, location=[1], week_of_the_year=week_of_the_year)
+    #wide_df3 = output_wide_df(df, location=[3], week_of_the_year=week_of_the_year)
     wide_df_all = output_wide_df(df, week_of_the_year=week_of_the_year)
 
     plt.figure(figsize=(15,6))
@@ -105,7 +122,13 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
     generate_plot(wide_df_all, travel_weeks_label=week_label, travel_year_label=year_label, total=True)
 
     plt.subplot(1,2,2)
-    generate_plot(wide_df1,  wide_df3, travel_weeks_label=week_label, travel_year_label=year_label, total=False)
+
+    locations = df["ChargeLoc"].unique()
+
+    for loc in locations:
+        wide_df_loc = output_wide_df(df, location=[loc], week_of_the_year=week_of_the_year)
+        generate_plot(wide_df_loc, travel_weeks_label=week_label, travel_year_label=year_label, location=loc, total=False)
+
 
     plt.tight_layout()
 
