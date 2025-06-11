@@ -87,15 +87,19 @@ trip_type_mapping = {
 
 ### Charging logic configuration ###
 
-battery_size = 70.7   #kWh
-energy_efficiency = 302  #Wh/Mi
+battery_size = 25   #kWh
+energy_efficiency = 269  #Wh/Mi
 min_stop_time_to_charge = 60
 
 
 
-charging_rates = {1: 2.7,            # Work
+charging_rates = {1: 3.6,            # Work
                   2: 11,            # Other
-                  3: 2.3}            # Home
+                  3: 3.6}            # Home
+
+charger_likelihood = {"work": 1,
+                      "other": 0,
+                      "home": 0.43}
 
 def SOC_charging_prob(soc, mu=0.6, sigma=0.2, truncate=True):
     cdf = norm.cdf(soc, loc=mu, scale=sigma)

@@ -104,6 +104,8 @@ def output_full_long_df(df):
 
     #Assert all match
 
+    df.to_csv(cfg.root_folder + "/output_csvs/long_df.csv", index=False)
+
     #assert df["MathMatch"].all(), "Mismatch between calculated and actual TotalPowerUsed!"
     return df
 
@@ -169,11 +171,13 @@ def output_wide_df(df, location=[1,2,3], week_of_the_year = list(range(1,60))):
 
     return wide_df
 
-def generate_plot(*args, travel_weeks_label, travel_year_label, total=False):
+def generate_plot(*args, travel_weeks_label, travel_year_label, location=None, total=False):
 
     location_mapping = {1: "Work",
                         2: "Other",
                         3: "Home"}
+
+    # Looping through all data frames in args
 
     for i, arg in enumerate(args):
 
@@ -185,7 +189,12 @@ def generate_plot(*args, travel_weeks_label, travel_year_label, total=False):
         sums_over_interval = arg.iloc[:,:-1].sum()
 
         x = sums_over_interval.index
+
+        # Calculating average consumption over 5 min bin...
+
         y = sums_over_interval.values / num_i
+
+        # Creating neat labels for x-axis
 
         labels = arg.columns[:-1]
         labels = [  int(label.split("-")[0]) for label in labels       ]
@@ -216,8 +225,10 @@ def generate_plot(*args, travel_weeks_label, travel_year_label, total=False):
         logging.debug(labels_hour[30:40])
         logging.debug(new_labels[30:40])
 
+        ## PLOTS ###
+
         if not total:
-            plt.plot(x, y, label=location_mapping[i+1])
+            plt.plot(x, y, label=location_mapping[location])
 
         else:
             plt.plot(x, y, label="Total")
@@ -247,25 +258,9 @@ def plot_weekly_demand(charging_df, output_file_name, week_of_the_year, week_lab
 
     charging_df = charging_df.copy()
 
+    # Plotting across all locations
 
     long_df = output_full_long_df(charging_df)
-
-    '''
-    if len(long_df["TravelYear"].unique()) == 1:
-        year_label = int(  long_df["TravelYear"].unique()[0]  )
-    else:
-        year_label = f"{int(long_df["TravelYear"].unique()[0])}-{int(long_df["TravelYear"].unique()[-1])}"
-
-    if len(long_df["TravelWeek"].unique()) == 1:
-        week_label = int(  long_df["TravelWeek"].unique()[0]  )
-    else:
-        week_label = f"{int(long_df["TravelWeek"].unique()[0])}-{int(long_df["TravelWeek"].unique()[-1])}"
-    '''
-    # Subset the charging df
-
-    wide_df1 = output_wide_df(long_df, location=[1], week_of_the_year=week_of_the_year)
-    wide_df2 = output_wide_df(long_df, location=[2], week_of_the_year=week_of_the_year)
-    wide_df3 = output_wide_df(long_df, location=[3], week_of_the_year=week_of_the_year)
     wide_df_all = output_wide_df(long_df, week_of_the_year=week_of_the_year)
 
     plt.figure(figsize=(15,6))
@@ -273,8 +268,16 @@ def plot_weekly_demand(charging_df, output_file_name, week_of_the_year, week_lab
     plt.subplot(1,2,1)
     generate_plot(wide_df_all, travel_weeks_label=week_label, travel_year_label=year_label, total=True)
 
+    # Secondary plot seggregated by location
+
+    locations = long_df["ChargeLoc"].unique()
+
     plt.subplot(1,2,2)
-    generate_plot(wide_df1, wide_df2, wide_df3, travel_weeks_label=week_label, travel_year_label=year_label, total=False)
+    for loc in locations:
+        wide_df_loc = output_wide_df(long_df, location=[loc], week_of_the_year=week_of_the_year)
+        generate_plot(wide_df_loc, travel_weeks_label=week_label, travel_year_label=year_label, location=loc, total=False)
+
+    # Subset the charging df
 
     plt.tight_layout()
 

@@ -3,8 +3,9 @@ import config as cfg
 import random
 import numpy as np
 import logging
+import config as cfg
 
-def generate_charger(x, home_charger_likelihood=0.96, work_charger_likelihood=0.62, public_charger_likelihood=0.17):
+def generate_charger(x, home_charger_likelihood=cfg.charger_likelihood["home"], work_charger_likelihood=cfg.charger_likelihood["work"], public_charger_likelihood=cfg.charger_likelihood["other"]):
     if x == 3:
         return random.choices([1,0], weights=[home_charger_likelihood,1-home_charger_likelihood])[0]
     if x == 2:
