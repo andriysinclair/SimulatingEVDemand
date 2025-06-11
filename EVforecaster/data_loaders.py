@@ -313,33 +313,34 @@ def apply_preparatory(df, output_file_name):
     return df
 
 
-def data_loader_end_to_end(travel_year):
-    survey_years = []
-    survey_years.append(travel_year)
-    survey_years.append(travel_year+1)
-    survey_years.append(travel_year+2)
+def data_loader_end_to_end(travel_year, raw_data_frames_loaded=True):
 
-    survey_years = [str(sy) for sy in survey_years]
+    # Load in all your data frames
+    if raw_data_frames_loaded is False:
+        trip_df = trip_data_loader(survey_years=list(range(2016,2024)), output_file_name=f"trip_df_2016_2023", is_loaded=False)
+        logging.info(f"Trip data loaded!")
+        day_df = day_data_loader(output_file_name="day_df", is_loaded=False)
+        logging.info("Day data loaded!")
+        household_df = household_data_loader(output_file_name="household_df", is_loaded=False)
+        logging.info(f"household data loaded")
 
-    trip_df = trip_data_loader(survey_years=survey_years, output_file_name=f"trip_df_{travel_year}", is_loaded=False)
+        merged_df = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=travel_year, output_file_name=f"merge_df_{travel_year}.pkl", is_loaded=False)
+        logging.info(f"Datasets merged")
 
-    logging.info(f"Trip data loaded!")
+    if raw_data_frames_loaded:
+        trip_df = pd.read_pickle(cfg.root_folder + f"/dataframes/trip_df_2016_2023.pkl")
+        day_df = pd.read_pickle(cfg.root_folder + f"/dataframes/day_df.pkl")
+        household_df = pd.read_pickle(cfg.root_folder + f"/dataframes/household_df.pkl")
 
-    day_df = day_data_loader(output_file_name="day_df", is_loaded=False)
+        merged_df = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=travel_year, output_file_name=f"merge_df_{travel_year}.pkl", is_loaded=False)
+        logging.info(f"Datasets merged")
 
-    logging.info("Day data loaded")
-
-    household_df = household_data_loader(output_file_name="household_df", is_loaded=False)
-
-    logging.info(f"household data loaded")
-
-    merged_df = merge_dfs(df1=trip_df, df2=day_df, df3=household_df, common_id_1_2="DayID", common_id_2_3="HouseholdID", travel_year=[travel_year], output_file_name=f"merge_df_{travel_year}.pkl", is_loaded=False)
-
-    logging.info(f"Datasets merged")
+    
 
     final_df = apply_preparatory(merged_df, output_file_name=f"Ready_to_model_df_{travel_year}")
 
     logging.info(f"Final DF loaded")
+
 
     return final_df
 
@@ -347,6 +348,6 @@ def data_loader_end_to_end(travel_year):
 
 if __name__ == "__main__":
 
-    df = data_loader_end_to_end(2017)
+    df = data_loader_end_to_end(travel_year=[2017], raw_data_frames_loaded=True)
 
 

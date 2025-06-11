@@ -165,6 +165,8 @@ def output_wide_df(df, location=[1,2,3], week_of_the_year = list(range(1,60))):
 
     wide_df = pd.DataFrame(all_rows)  
 
+    wide_df.to_csv(cfg.root_folder + "/output_csvs/wide_df.csv", index=False)
+
     return wide_df
 
 def generate_plot(*args, travel_weeks_label, travel_year_label, total=False):
@@ -175,11 +177,15 @@ def generate_plot(*args, travel_weeks_label, travel_year_label, total=False):
 
     for i, arg in enumerate(args):
 
+        # Obtaining number of individuals
+
+        num_i  = len(arg)
+
         # Removing individual id
         sums_over_interval = arg.iloc[:,:-1].sum()
 
         x = sums_over_interval.index
-        y = sums_over_interval.values
+        y = sums_over_interval.values / num_i
 
         labels = arg.columns[:-1]
         labels = [  int(label.split("-")[0]) for label in labels       ]
@@ -296,6 +302,9 @@ if __name__ == "__main__":
     plot_weekly_demand(charging_df=charging_df, output_file_name="plot_total", week_of_the_year=list(range(2,53)), week_label="Full Year", year_label=2017)
     #plot_weekly_demand(charging_df=charging_df, output_file_name="plot_total", week_of_the_year=list(range(1,60)))
 
+
+
+    '''
     weeks_winter = [49,50,51,52] + list(range(1,10))
     plot_weekly_demand(charging_df=charging_df, output_file_name="plot_winter", week_of_the_year=weeks_winter, week_label="Winter", year_label=2017)
 
@@ -308,3 +317,4 @@ if __name__ == "__main__":
     weeks_autumn = list(range(36,49))
     plot_weekly_demand(charging_df=charging_df, output_file_name="plot_autumn", week_of_the_year=weeks_autumn, week_label="Autumn", year_label=2017)
 
+    '''

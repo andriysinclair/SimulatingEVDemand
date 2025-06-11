@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     # Loading in df
 
-    full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df_2017.pkl"
+    full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl"
     full_df = pd.read_pickle(full_df_path)
 
     test = charging_logic(full_df, output_file_name="charging_df", test_index=None)
