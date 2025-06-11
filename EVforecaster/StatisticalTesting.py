@@ -32,7 +32,7 @@ travel_survey_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl
 travel_survey_df = pd.read_pickle(travel_survey_path)
 
 
-def obtain_results(sim_times, results_folder, simulate=True):
+def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
 
     if simulate:
 
@@ -89,8 +89,6 @@ def obtain_results(sim_times, results_folder, simulate=True):
         with open(results_folder + f'/x_labels.pkl', 'wb') as f:
             pickle.dump(x_labels, f)
 
-        return results_matrix
-
     if not simulate:
 
         with open(results_folder + f'/results_matrix-{sim_times}.pkl', 'rb') as f:
@@ -107,15 +105,45 @@ def obtain_results(sim_times, results_folder, simulate=True):
     # Collect mean demand
 
     mean_curve = np.mean(results_matrix, axis=0)
+    lower_bound = np.percentile(results_matrix, 2.5, axis=0)
+    upper_bound = np.percentile(results_matrix, 97.5, axis=0)
 
-    plt.plot(x, mean_curve)
-    
+    plt.figure(figsize=(15,6))
+
+    plt.tight_layout()
+
+    plt.plot(x, mean_curve, label="Mean")
+    plt.fill_between(x, lower_bound, upper_bound, color='lightblue', alpha=0.4, label='95% CI')
+
+    plt.ylabel('Demand (kWh/5 minutes)/ EV')
+    #plt.title('Simulated Weekly EV Charging Demand')
+
+    plt.xticks(ticks=range(0, len(x_labels), 72), labels=x_labels[::72], rotation=45)
+
+    plt.grid()
+
+    plot_path = plots_folder + f"sim_plot_{sim_times}.pdf"
+
+    logging.info(plot_path)
+
+    plt.legend()
+
+    plt.savefig(plot_path, format="pdf")
+
+    return results_matrix
 
 
 if __name__ == "__main__":
 
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+    results_folder = cfg.root_folder + "/results"
+    plots_folder = cfg.root_folder + "/plots/"
+
     # Set up basic configuration for logging
     logging.basicConfig(level=logging.INFO)
 
-    obtain_results(3)
+    obtain_results(3, results_folder=results_folder, plots_folder=plots_folder)
 
