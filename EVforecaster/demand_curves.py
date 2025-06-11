@@ -171,32 +171,11 @@ def output_wide_df(df, location=[1,2,3], week_of_the_year = list(range(1,60))):
 
     return wide_df
 
-def generate_plot(*args, travel_weeks_label, travel_year_label, location=None, total=False):
+def create_labels(df):
+        
+        df = df.copy()
 
-    location_mapping = {1: "Work",
-                        2: "Other",
-                        3: "Home"}
-
-    # Looping through all data frames in args
-
-    for i, arg in enumerate(args):
-
-        # Obtaining number of individuals
-
-        num_i  = len(arg)
-
-        # Removing individual id
-        sums_over_interval = arg.iloc[:,:-1].sum()
-
-        x = sums_over_interval.index
-
-        # Calculating average consumption over 5 min bin...
-
-        y = sums_over_interval.values / num_i
-
-        # Creating neat labels for x-axis
-
-        labels = arg.columns[:-1]
+        labels = df.columns[:-1]
         labels = [  int(label.split("-")[0]) for label in labels       ]
         labels_dow = [   math.ceil(label/1440)     for label in labels]
         labels_dow[0] = 1
@@ -224,6 +203,37 @@ def generate_plot(*args, travel_weeks_label, travel_year_label, location=None, t
         logging.debug(labels_dow_mapped[30:40])
         logging.debug(labels_hour[30:40])
         logging.debug(new_labels[30:40])
+
+        return new_labels
+
+
+
+def generate_plot(*args, travel_weeks_label, travel_year_label, location=None, total=False):
+
+    location_mapping = {1: "Work",
+                        2: "Other",
+                        3: "Home"}
+
+    # Looping through all data frames in args
+
+    for i, arg in enumerate(args):
+
+        # Obtaining number of individuals
+
+        num_i  = len(arg)
+
+        # Removing individual id
+        sums_over_interval = arg.iloc[:,:-1].sum()
+
+        x = sums_over_interval.index
+
+        # Calculating average consumption over 5 min bin...
+
+        y = sums_over_interval.values / num_i
+
+        # Creating neat labels for x-axis
+
+        new_labels = create_labels(arg)
 
         ## PLOTS ###
 

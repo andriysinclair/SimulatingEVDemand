@@ -32,7 +32,8 @@ def generate_charger(x, home_charger_likelihood=cfg.charger_likelihood["home"], 
 def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location, last_trip_flag,
                        min_stop_time_to_charge,
                        battery_size,
-                       SOC_charging_prob) -> int:
+                       SOC_charging_prob,
+                       car_type) -> int:
     """
     obtain_decision_to_charge 
 
@@ -46,6 +47,7 @@ def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location,
         min_stop_time_to_charge (float): in minutes
         battery_size (float): in kW
         SOC_charging_prob (func): function to determine charge probability based off SOC, available in config.py
+        car_type (str): BEV or PHEV, changes decision function
 
     Returns:
         int: 1 (charge) or 0 (not charge)
@@ -67,7 +69,7 @@ def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location,
 
     # Function calculates charging probabilites based off SOC
 
-    charge_decision_prob = SOC_charging_prob(SOC_percentage)
+    charge_decision_prob = SOC_charging_prob(SOC_percentage, car_type=car_type)
 
     logging.debug(f"charging decision prob: {charge_decision_prob}")
 

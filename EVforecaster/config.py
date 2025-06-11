@@ -87,26 +87,28 @@ trip_type_mapping = {
 
 ### Charging logic configuration ###
 
-battery_size = 25   #kWh
-energy_efficiency = 269  #Wh/Mi
+car_types = [  ["PHEV", "BEV"], [0.7, 0.3]  ]
+battery_size_phev = [ [  (12, 12*1000/28 )    ], [1] ]
+battery_size_bev = [ [   (25,269)   ], [1]  ]
+
+
 min_stop_time_to_charge = 60
 
-
-
-charging_rates = {1: 3.6,            # Work
-                  2: 11,            # Other
-                  3: 3.6}            # Home
+                  
+charging_rates = {1: [[3.6], [1]],            # Work
+                  2: [[11], [1]],            # Other
+                  3: [[3, 7], [0.5, 0.5] ]}            # Home
 
 charger_likelihood = {"work": 0,
                       "other": 0,
                       "home": 1}
 
-def SOC_charging_prob(soc, mu=0.6, sigma=0.2, truncate=True):
+def SOC_charging_prob(soc, car_type, mu=0.6, sigma=0.2, ):
     cdf = norm.cdf(soc, loc=mu, scale=sigma)
     prob = 1 - cdf
 
     # Ensure P(charge) = 1 if SOC=0
-    if truncate:
+    if car_type=="BEV":
         prob = np.where(soc<=0, 1.0, prob)
 
     return prob
