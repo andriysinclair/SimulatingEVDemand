@@ -97,9 +97,9 @@ charging_rates = {1: 3.6,            # Work
                   2: 11,            # Other
                   3: 3.6}            # Home
 
-charger_likelihood = {"work": 1,
+charger_likelihood = {"work": 0,
                       "other": 0,
-                      "home": 0.43}
+                      "home": 1}
 
 def SOC_charging_prob(soc, mu=0.6, sigma=0.2, truncate=True):
     cdf = norm.cdf(soc, loc=mu, scale=sigma)

@@ -10,7 +10,11 @@ from demand_curves import output_wide_df, generate_plot
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
 
-def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, plots_folder, output_file_name):
+import config as cfg
+
+csv_folder = cfg.root_folder + "/output_csvs/"
+
+def demand_curves_ECA(df_path, week_of_the_year=None, week_label=None, year_label=None, save_fig=None, plots_folder=None, csv_folder=csv_folder, output_file_name=None):
     """
     modify_df 
 
@@ -20,39 +24,88 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
     Args:
         df (pd.DataFrame): df relating to pilor study
     """    
-    df = df.copy()
-    df["BatteryChargeStartDate"] = pd.to_datetime(df["BatteryChargeStartDate"])
-    df["BatteryChargeStopDate"] = pd.to_datetime(df["BatteryChargeStopDate"])
-    df["diff"] = df["BatteryChargeStopDate"] - df["BatteryChargeStartDate"]
+
+    df = pd.read_csv(df_path)
+
+    # Taking a random draw to reduce comp
+
+    df = df.sample(n=100000)
+    df["ChargeLoc"] = 3
+
+    # Count how many charges took >25kW
+    df25 = df[df["Energy"]>25]
+
+    count_25 = len(df25)
+    percentage25 = count_25 / len(df) * 100
+
+    logging.info(f"Percentage of charges taking >25kW of energy: {percentage25:.2f}%")
+
+    # Merge the date and time columns into one datetime column
+    df['StartDateTime'] = pd.to_datetime(
+        df['StartDate'] + ' ' + df['StartTime'], format='%d/%m/%Y %H:%M:%S')
+    
+    df['EndDateTime'] = pd.to_datetime(
+        df['EndDate'] + ' ' + df['EndTime'], format='%d/%m/%Y %H:%M:%S')
+    
+    df['StartDateTime'] = pd.to_datetime(
+        df['StartDateTime'], 
+        dayfirst=True,
+        format='%d/%m/%Y %H:%M'
+    )
+    df['EndDateTime'] = pd.to_datetime(
+        df['EndDateTime'], 
+        dayfirst=True,
+        format='%d/%m/%Y %H:%M'
+    )
+
+    df = df.drop(columns=["StartDate", "StartTime", "EndDate", "EndTime"], axis=1)
+
+    # Obtaining the difference
+    df["diff"] = df["EndDateTime"] - df["StartDateTime"]
     df["diff"] = df["diff"].dt.total_seconds() / 60
     df["diff"] = 5 * round(df["diff"]/5)
     df["diff"] = df["diff"].astype(int)
 
-    total_m_s = df["BatteryChargeStartDate"].dt.hour * 60 + df["BatteryChargeStartDate"].dt.minute
+    # Applying charge cap so that we get charge time not plugged in time
+
+    min_charging_rate = 3 # kWh
+
+    df["MaxChargingDuration"] = df["Energy"]/min_charging_rate * 60 # in minutes
+
+    # finding rows that violate this condition
+
+    mask = df["diff"] > df["MaxChargingDuration"]
+
+    # Show some of the erronous rows
+    overshoot_df = df.loc[mask, ["Energy", "StartDateTime", "EndDateTime", "diff", "MaxChargingDuration"]]
+
+    logging.info(f"Rows where plug in duration was longer than charging duration")
+
+    logging.info(overshoot_df.head())
+
+    df.loc[mask, "diff"] = df.loc[mask, "MaxChargingDuration"].astype(int)
+
+    # Getting charge start and charge end in minutes from midnight
+    total_m_s = df["StartDateTime"].dt.hour * 60 + df["StartDateTime"].dt.minute
     total_m_s = 5 * round(total_m_s/5)
     df["ChargeStart"] = total_m_s
     df["ChargeStart"] = df["ChargeStart"].astype(int)
-
     df["ChargeEnd"] = df["ChargeStart"] + df["diff"]
-    df["TravelDay"] = df["BatteryChargeStartDate"].dt.day_of_week+1
 
+    # Getting day of the week and week of the year
+    df["TravelDay"] = df["StartDateTime"].dt.day_of_week+1
+    df["TravelWeek"] = df["StartDateTime"].dt.isocalendar().week
 
-    #df["ChargingRate"] = 3.6
-
-    df["ChargeLoc"] = df["ParticipantID"].apply(lambda x: 1 if x[:2] == "YH" else 3)
-
-    df["TravelWeek"] = df["BatteryChargeStartDate"].dt.isocalendar().week
-
-    df = df.drop(["diff", "BatteryChargeStartDate", "BatteryChargeStopDate"], axis=1)
-
-    df["TotalPowerUsed"] = 25 * df["Ending SoC (of 12)"]/12 -  25 * df["Starting SoC (of 12)"]/12
+    # Dropping bits
+    df = df.drop(["diff", "PluginDuration", "MaxChargingDuration"], axis=1)
 
     df["ChargeStartRolling"] = df["ChargeStart"] + (  (df["TravelDay"]-1)*1440  )
     df["ChargeEndRolling"] = df["ChargeEnd"] +    (  (df["TravelDay"]-1)*1440  )
     df["ChargeDuration"] = df["ChargeEndRolling"] - df["ChargeStartRolling"]
 
-    df = df.rename(columns={"ParticipantID": "IndividualID"})
-
+    df = df.rename(columns={"CPID": "IndividualID", 
+                            "Energy": "TotalPowerUsed"})
+    
     MAX_MINS = 7*1440 # 10,080 minutes in a week
 
     updated_rows = []
@@ -106,11 +159,13 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
         np.nan
     )
 
-    # Checking for any faulty charges
-    df.loc[df["Starting SoC (of 12)"] == df["Ending SoC (of 12)"], "5_min_demand"] = np.nan
+
 
 
     logging.info(f"Average 5 min demand: {df["5_min_demand"].mean()}")
+    logging.info(f"Included travel weeks: {df["TravelWeek"].unique()}")
+
+    df.to_csv(csv_folder + f"/{output_file_name}.csv", index=False)
 
     #wide_df1 = output_wide_df(df, location=[1], week_of_the_year=week_of_the_year)
     #wide_df3 = output_wide_df(df, location=[3], week_of_the_year=week_of_the_year)
@@ -121,6 +176,7 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
     plt.subplot(1,2,1)
     generate_plot(wide_df_all, travel_weeks_label=week_label, travel_year_label=year_label, total=True)
 
+    '''
     plt.subplot(1,2,2)
 
     locations = df["ChargeLoc"].unique()
@@ -131,33 +187,32 @@ def demand_curves_MEA(df, week_of_the_year, week_label, year_label, save_fig, pl
 
 
     plt.tight_layout()
+    '''
 
     if save_fig:
 
         plt.savefig(f"{plots_folder}{output_file_name}.pdf", format="pdf")
-
+    
 
 
     return df
 
 
 
-
-    #df["ChargeStart"] = 
-
-
-
 if __name__ == "__main__":
 
     import config as cfg
-    
-    pilot_data = cfg.root_folder + "/pilot_data/"
+
+    csv_folder = cfg.root_folder + "/output_csvs/"
     plots_folder = cfg.root_folder + "/plots/"
-    df = pd.read_csv(pilot_data + "MyElectricAvenue.csv")
 
-    df1 = demand_curves_MEA(df,week_of_the_year=list(range(2,53)), week_label="Full Year", year_label=2017, plots_folder=plots_folder,
-                            output_file_name="MEA_plot", save_fig=True)
+    # path to electric charge point analysis
+    df_path = cfg.root_folder + "/data/electric-chargepoint-analysis-2017-raw-domestics-data.csv"
+    
+    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long", plots_folder=plots_folder,
+                           week_of_the_year=list(range(39,54)),
+                           week_label="39-53",
+                           year_label=2017,
+                           save_fig=True)
 
-    #df1 = output_full_long_df(df)
-
-    df1.to_csv(cfg.root_folder + "/output_csvs/MEA_long.csv", index=False)
+    print(df.head())
