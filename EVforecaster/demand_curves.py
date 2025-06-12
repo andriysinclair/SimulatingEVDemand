@@ -109,13 +109,12 @@ def output_full_long_df(df):
     #assert df["MathMatch"].all(), "Mismatch between calculated and actual TotalPowerUsed!"
     return df
 
-def output_wide_df(df, location=[1,2,3], week_of_the_year = list(range(1,60))):
+def output_wide_df(df, location=[1,2,3]):
 
     df = df.copy()
 
-    # Subsetting done here
+    # Subsetting on location done here
     df = df[df["ChargeLoc"].isin(location)]
-    df = df[df["TravelWeek"].isin(week_of_the_year)]
 
     # Build a blank df in wide format with the individual and each of his binned 5-minutly consumption
 

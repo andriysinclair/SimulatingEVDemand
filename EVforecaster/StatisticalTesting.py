@@ -32,10 +32,13 @@ travel_survey_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl
 travel_survey_df = pd.read_pickle(travel_survey_path)
 
 
-def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
+def obtain_results(sim_times, results_folder, plots_folder,
+                    travel_weeks_sim = list(range(1,54)),
+                    travel_weeks_eca = list(range(39,53)),
+                      simulate=True):
 
     # Loading results from pilot
-    with open(results_folder + f'/y_ECA.pkl', 'rb') as f:
+    with open(results_folder + f'/y_ECA_{travel_weeks_eca[0]}-{travel_weeks_eca[-1]}.pkl', 'rb') as f:
         y_eca = pickle.load(f)
 
     if simulate:
@@ -51,7 +54,7 @@ def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
             ### LOGIC ####
 
             # Obtain charging schedule df
-            charging_df = charging_logic(travel_survey_df)
+            charging_df = charging_logic(travel_survey_df, travel_weeks=travel_weeks_sim)
 
             # Add extra bits needed before wide transformation
             charging_df = output_full_long_df(charging_df)
@@ -84,7 +87,7 @@ def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
 
         x_labels = create_labels(wide_df)
 
-        with open(results_folder + f'/results_matrix-{sim_times}.pkl', 'wb') as f:
+        with open(results_folder + f'/results_matrix-{sim_times}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pkl', 'wb') as f:
             pickle.dump(results_matrix, f)
 
         with open(results_folder + f'/x.pkl', 'wb') as f:
@@ -95,7 +98,7 @@ def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
 
     if not simulate:
 
-        with open(results_folder + f'/results_matrix-{sim_times}.pkl', 'rb') as f:
+        with open(results_folder + f'/results_matrix-{sim_times}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pkl', 'rb') as f:
             results_matrix = pickle.load(f)
 
         with open(results_folder + f'/x.pkl', 'rb') as f:
@@ -112,11 +115,11 @@ def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
     R_2 = 1 - RSS / TSS
 
 
-    logging.debug(f"R_2: {R_2}")
+    logging.info(f"R_2: {R_2[:15]}")
 
     # Saving R_2 to results
 
-    with open(results_folder + f'/R_2_{sim_times}.pkl', 'wb') as f:
+    with open(results_folder + f'/R_2_{sim_times}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pkl', 'wb') as f:
         pickle.dump(R_2, f)
 
 
@@ -159,7 +162,7 @@ def obtain_results(sim_times, results_folder, plots_folder, simulate=True):
 
     ## Saving Plot ##
 
-    plot_path = plots_folder + f"sim_plot_{sim_times}.pdf"
+    plot_path = plots_folder + f"sim_plot_{sim_times}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pdf"
     logging.info(plot_path)
     
     plt.savefig(plot_path, format="pdf")
@@ -179,5 +182,20 @@ if __name__ == "__main__":
     # Set up basic configuration for logging
     logging.basicConfig(level=logging.INFO)
 
-    obtain_results(3, results_folder=results_folder, plots_folder=plots_folder, simulate=False)
+    # Simulating for all weeks of the year
 
+    obtain_results(1000, results_folder=results_folder, plots_folder=plots_folder, simulate=True)
+
+    '''
+    # Simulating only for the weeks relevant to travel
+
+    obtain_results(3, travel_weeks_sim=list(range(39,54)),
+                    results_folder=results_folder, plots_folder=plots_folder, simulate=False)
+    
+    ####
+
+    obtain_results(3, travel_weeks_sim=list(range(49,54)),
+                   travel_weeks_eca=list(range(49,53)),
+                results_folder=results_folder, plots_folder=plots_folder, simulate=True)
+
+    '''

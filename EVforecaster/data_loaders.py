@@ -306,6 +306,10 @@ def apply_preparatory(df, output_file_name):
 
     df = pd.concat(df_by_i)
 
+    logging.info(f"Unique travel weeks new: {df["TWSWeekNew"].unique().max()}")
+    logging.info(f"Unique travel weeks: {df["TWSWeek"].unique().max()}")
+    logging.info(f"Unique travel year: {df["TravelYear"].unique().max()}")
+
     df.to_pickle(cfg.root_folder + f"/dataframes/{output_file_name}.pkl")
 
     df.to_csv(cfg.root_folder + f"/output_csvs/{output_file_name}.csv", index=False)
@@ -348,6 +352,6 @@ def data_loader_end_to_end(travel_year, raw_data_frames_loaded=True):
 
 if __name__ == "__main__":
 
-    df = data_loader_end_to_end(travel_year=[2017], raw_data_frames_loaded=True)
+    df = data_loader_end_to_end(travel_year=[2017], raw_data_frames_loaded=False)
 
 

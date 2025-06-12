@@ -15,9 +15,9 @@ import config as cfg
 
 csv_folder = cfg.root_folder + "/output_csvs/"
 
-def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label=None, year_label=None, 
-                      save_fig=None, plots_folder=None, csv_folder=csv_folder, output_file_name=None,
-                      ):
+def demand_curves_ECA(df_path, results_folder, travel_weeks=list(range(39,54)),
+                     csv_folder=csv_folder, output_file_name=None,
+                      ) -> pd.DataFrame:
     """
     modify_df 
 
@@ -25,14 +25,14 @@ def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label
     and create weekly EV demand curves for cross-comparison
 
     Args:
-        df (pd.DataFrame): df relating to pilor study
+        df (pd.DataFrame): df relating to pilot study
     """    
 
     df = pd.read_csv(df_path)
 
     # Taking a random draw to reduce comp
 
-    df = df.sample(n=100000)
+    
     df["ChargeLoc"] = 3
 
     # Count how many charges took >25kW
@@ -99,6 +99,12 @@ def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label
     df["TravelDay"] = df["StartDateTime"].dt.day_of_week+1
     df["TravelWeek"] = df["StartDateTime"].dt.isocalendar().week
 
+    df = df[df["TravelWeek"].isin(travel_weeks)]
+
+    logging.info(f"Included travel weeks: {df["TravelWeek"].unique()}")
+
+    df = df.sample(n=min(100_000, len(df)))
+
     # Dropping bits
     df = df.drop(["diff", "PluginDuration", "MaxChargingDuration"], axis=1)
 
@@ -150,6 +156,10 @@ def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label
 
     df = pd.DataFrame(updated_rows).reset_index(drop=True)
 
+    # Drop travel weeks that get moved to 53
+
+    df = df[df["TravelWeek"] != 53]
+
 
     df["ChargeStartBin"] = df["ChargeStartRolling"]/5
     df["ChargeEndBin"] = df["ChargeEndRolling"]/5
@@ -162,17 +172,16 @@ def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label
         np.nan
     )
 
-
-
-
     logging.info(f"Average 5 min demand: {df["5_min_demand"].mean()}")
-    logging.info(f"Included travel weeks: {df["TravelWeek"].unique()}")
+    
 
     df.to_csv(csv_folder + f"/{output_file_name}.csv", index=False)
 
-    #wide_df1 = output_wide_df(df, location=[1], week_of_the_year=week_of_the_year)
-    #wide_df3 = output_wide_df(df, location=[3], week_of_the_year=week_of_the_year)
-    wide_df = output_wide_df(df, week_of_the_year=week_of_the_year)
+    # Filtering by week of the year
+
+
+
+    wide_df = output_wide_df(df)
 
     num_i  = len(wide_df)
 
@@ -183,8 +192,10 @@ def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label
 
     # Saving output vector
 
-    with open(results_folder + f'y_ECA.pkl', 'wb') as f:
+    with open(results_folder + f'y_ECA_{travel_weeks[0]}-{travel_weeks[-1]}.pkl', 'wb') as f:
         pickle.dump(y, f)
+
+    '''
 
     plt.figure(figsize=(15,6))
 
@@ -206,7 +217,7 @@ def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label
 
         plt.savefig(f"{plots_folder}{output_file_name}.pdf", format="pdf")
     
-
+    '''
 
     return df
 
@@ -222,11 +233,34 @@ if __name__ == "__main__":
 
     # path to electric charge point analysis
     df_path = cfg.root_folder + "/data/electric-chargepoint-analysis-2017-raw-domestics-data.csv"
-    
-    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long", plots_folder=plots_folder, results_folder=results_folder,
-                           week_of_the_year=list(range(39,54)),
-                           week_label="39-53",
-                           year_label=2017,
-                           save_fig=True)
 
-    print(df.head())
+    # Save full data, 4/5 weekly and by month
+    
+    # Full range of data
+    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
+                           travel_weeks=list(range(39,53)),
+                            results_folder=results_folder,
+                           )
+    
+    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
+                        travel_weeks=list(range(39,44)),
+                        results_folder=results_folder,
+                        )
+    
+    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
+                        travel_weeks=list(range(44,49)),
+                        results_folder=results_folder,
+                        )
+    
+    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
+                        travel_weeks=list(range(49,53)),
+                        results_folder=results_folder,
+                        )
+    
+    for i in range(39, 53):
+        df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
+                    travel_weeks=[i],
+                    results_folder=results_folder,
+                    )
+
+

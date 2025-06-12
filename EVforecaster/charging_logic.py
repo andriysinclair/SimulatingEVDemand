@@ -9,7 +9,8 @@ from charging_logic_auxillary import generate_charger, obtain_decision_to_charge
 
 
 
-def charging_logic(df, output_file_name=None,  battery_size_phev = cfg.battery_size_phev,
+def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,  
+                   battery_size_phev = cfg.battery_size_phev,
                    battery_size_bev = cfg.battery_size_bev,
                    car_types = cfg.car_types,
                     is_loaded=False, test_index=None,
@@ -40,6 +41,10 @@ def charging_logic(df, output_file_name=None,  battery_size_phev = cfg.battery_s
     # Adding nodes with available chargers
 
     df = df.copy()
+
+    # Filter by travel week
+
+    df = df[df["TWSWeekNew"].isin(travel_weeks)]
 
     # Set chargers given the location and probability of charger existing at that location
     df["IsCharger"] = df["TripEndLoc"].apply(lambda x: generate_charger(x))
