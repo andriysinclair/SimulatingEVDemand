@@ -4,8 +4,9 @@ import math
 import matplotlib.pyplot as plt
 import logging
 import numpy as np
+import pickle
 
-from demand_curves import output_wide_df, generate_plot
+from demand_curves import output_wide_df, create_labels
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +15,9 @@ import config as cfg
 
 csv_folder = cfg.root_folder + "/output_csvs/"
 
-def demand_curves_ECA(df_path, week_of_the_year=None, week_label=None, year_label=None, save_fig=None, plots_folder=None, csv_folder=csv_folder, output_file_name=None):
+def demand_curves_ECA(df_path, results_folder, week_of_the_year=None, week_label=None, year_label=None, 
+                      save_fig=None, plots_folder=None, csv_folder=csv_folder, output_file_name=None,
+                      ):
     """
     modify_df 
 
@@ -169,25 +172,35 @@ def demand_curves_ECA(df_path, week_of_the_year=None, week_label=None, year_labe
 
     #wide_df1 = output_wide_df(df, location=[1], week_of_the_year=week_of_the_year)
     #wide_df3 = output_wide_df(df, location=[3], week_of_the_year=week_of_the_year)
-    wide_df_all = output_wide_df(df, week_of_the_year=week_of_the_year)
+    wide_df = output_wide_df(df, week_of_the_year=week_of_the_year)
+
+    num_i  = len(wide_df)
+
+    # Obtain the 5-min weekly demand vector
+    demand_vector = wide_df.iloc[:,:-1].sum()
+
+    y = demand_vector.values / num_i
+
+    # Saving output vector
+
+    with open(results_folder + f'y_ECA.pkl', 'wb') as f:
+        pickle.dump(y, f)
 
     plt.figure(figsize=(15,6))
 
-    plt.subplot(1,2,1)
-    generate_plot(wide_df_all, travel_weeks_label=week_label, travel_year_label=year_label, total=True)
+    x = demand_vector.index
 
-    '''
-    plt.subplot(1,2,2)
+    x_labels = create_labels(wide_df)
 
-    locations = df["ChargeLoc"].unique()
-
-    for loc in locations:
-        wide_df_loc = output_wide_df(df, location=[loc], week_of_the_year=week_of_the_year)
-        generate_plot(wide_df_loc, travel_weeks_label=week_label, travel_year_label=year_label, location=loc, total=False)
-
-
+    plt.figure(figsize=(15,6))
     plt.tight_layout()
-    '''
+    plt.plot(x, y, label="Electric Chargepoint Analysis 2017")
+    plt.ylabel('Demand (kWh/5 minutes)/ EV')
+    #plt.title('Simulated Weekly EV Charging Demand')
+    plt.xticks(ticks=range(0, len(x_labels), 72), labels=x_labels[::72], rotation=45)
+    plt.grid()
+
+    plt.legend()
 
     if save_fig:
 
@@ -205,11 +218,12 @@ if __name__ == "__main__":
 
     csv_folder = cfg.root_folder + "/output_csvs/"
     plots_folder = cfg.root_folder + "/plots/"
+    results_folder = cfg.root_folder + "/results/"
 
     # path to electric charge point analysis
     df_path = cfg.root_folder + "/data/electric-chargepoint-analysis-2017-raw-domestics-data.csv"
     
-    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long", plots_folder=plots_folder,
+    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long", plots_folder=plots_folder, results_folder=results_folder,
                            week_of_the_year=list(range(39,54)),
                            week_label="39-53",
                            year_label=2017,
