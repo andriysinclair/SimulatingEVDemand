@@ -88,7 +88,7 @@ trip_type_mapping = {
 ### Charging logic configuration ###
 
 car_types = [  ["PHEV", "BEV"], [0.7, 0.3]  ]
-battery_size_phev = [ [  (12, 12*1000/28 )    ], [1] ]
+battery_size_phev = [ [  (13.8, 363 )    ], [1] ]
 battery_size_bev = [ [   (25,269)   ], [1]  ]
 
 

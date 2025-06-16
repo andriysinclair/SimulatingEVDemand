@@ -40,6 +40,7 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
 
     # Adding nodes with available chargers
 
+    
     df = df.copy()
 
     # Filter by travel week
@@ -254,9 +255,9 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
         charging_df = pd.DataFrame(charging_dict)
 
         charging_df = pd.merge(charging_df, df, on="TripID")
-        logging.info(f"Total trips: {total_trips}")
-        logging.info(f"Negative trips: {negative_trips}")
-        logging.info(f"% negative trips: {negative_trips/total_trips*100:.2f}%")
+        logging.debug(f"Total trips: {total_trips}")
+        logging.debug(f"Negative trips: {negative_trips}")
+        logging.debug(f"% negative trips: {negative_trips/total_trips*100:.2f}%")
 
 
         # Dump charging schedules to pickle

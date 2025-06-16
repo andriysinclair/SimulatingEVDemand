@@ -292,7 +292,8 @@ def apply_preparatory(df, output_file_name):
 
         i_df["Distance+1"] = i_df["TripDisExSW"].shift(-1)
 
-        #Correct TWSweek to account for trips crossing over into new weeks
+        #Correct TWSweek to account for trips crossing over into new weeks. As TWSweek records the week the travel diary started
+        # If travel starts on Sunday ....
         i_df["WeekDayDiff"] = i_df["TravelWeekDay_B01ID"].diff()
 
         i_df["WeekRollover"] = (i_df["WeekDayDiff"] < 0).astype(int)
