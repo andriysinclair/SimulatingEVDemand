@@ -39,7 +39,8 @@ def obtain_results(N_sims, results_folder, plots_folder=None,
                    travel_weeks_eca=list(range(39, 53)),
                    simulate=True,
                    test_index=None,
-                   testing_performance=False):
+                   testing_performance=False,
+                   home_shift = cfg.home_shift):
 
     # Load ECA target vector
     with open(results_folder + f'/y_ECA_{travel_weeks_eca[0]}-{travel_weeks_eca[-1]}.pkl', 'rb') as f:
@@ -126,7 +127,7 @@ def obtain_results(N_sims, results_folder, plots_folder=None,
         plt.grid()
 
         plt.tight_layout()
-        plot_path = plots_folder + f"sim_plot_{N_sims}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pdf"
+        plot_path = plots_folder + f"sim_plot_{N_sims}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}_homeshift{home_shift}.pdf"
         logging.info(f"Saved plot to {plot_path}")
         plt.savefig(plot_path, format="pdf")
 
@@ -194,7 +195,7 @@ if __name__ == "__main__":
 
     # Simulating for all weeks of the year
 
-    obtain_results(3, results_folder=results_folder, plots_folder=plots_folder, simulate=False)
+    obtain_results(100, results_folder=results_folder, plots_folder=plots_folder, simulate=True)
 
     #obtain_algo_perfromance(results_folder=results_folder, n_min=50, n_step=50, n_max=4000)
 

@@ -81,7 +81,7 @@ def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location,
     return int(charge_decision)
 
 def calculate_charging_session(SOC, location_charging_rate, time_duration_at_location, last_trip_flag,
-                               charge_start_time, battery_size)->tuple:
+                               charge_start_time, battery_size, home_shift)->tuple:
     """
     calculate_charging_session 
 
@@ -107,7 +107,8 @@ def calculate_charging_session(SOC, location_charging_rate, time_duration_at_loc
     """    
     
     # Assuming individuals charge when they arrive at end location - this is charge start time
-    charge_start_time = 5 * round(charge_start_time/5)
+    
+    charge_start_time = 5 * round(charge_start_time/5) + home_shift
 
     # Capacity at charging location
     remaining_capacity = battery_size - SOC

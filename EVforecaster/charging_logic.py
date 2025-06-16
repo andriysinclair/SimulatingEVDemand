@@ -15,8 +15,10 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
                    car_types = cfg.car_types,
                     is_loaded=False, test_index=None,
                     charging_rates = cfg.charging_rates,
-                    save_schedule = False
+                    save_schedule = False,
+                    home_shift = cfg.home_shift,
                     ) -> pd.DataFrame:
+    
     """
     charging_logic 
 
@@ -40,7 +42,6 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
 
     # Adding nodes with available chargers
 
-    
     df = df.copy()
 
     # Filter by travel week
@@ -186,7 +187,8 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
                         new_SOC, total_power_used, charge_start_time, charge_end_time, charge_duration = calculate_charging_session(SOC=current_SOC, location_charging_rate=charging_rate,
                                                                                                                                 time_duration_at_location=time_duration_at_location,
                                                                                                                                 charge_start_time=time_at_location, last_trip_flag=last_trip_flag,
-                                                                                                                                battery_size=battery_size_for_i)
+                                                                                                                                battery_size=battery_size_for_i,
+                                                                                                                                home_shift=home_shift)
                     
                     except Exception:
 
@@ -276,13 +278,13 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
 if __name__ == "__main__":
 
     # Set up basic configuration for logging
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # Loading in df
 
     full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl"
     full_df = pd.read_pickle(full_df_path)
 
-    test = charging_logic(full_df, output_file_name="charging_df", test_index=None, save_schedule=True)
+    test = charging_logic(full_df, output_file_name="charging_df", test_index=2, save_schedule=True)
 
     
