@@ -92,7 +92,9 @@ battery_size_phev = [ [  (13.8, 363 )    ], [1] ]
 battery_size_bev = [ [   (25,269)   ], [1]  ]
 
 
-min_stop_time_to_charge = 60
+min_stop_time_to_charge = 120
+
+home_shift = 60
 
                   
 charging_rates = {1: [[3.6], [1]],            # Work

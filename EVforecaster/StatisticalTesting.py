@@ -194,9 +194,9 @@ if __name__ == "__main__":
 
     # Simulating for all weeks of the year
 
-    #obtain_results(3, results_folder=results_folder, plots_folder=plots_folder, simulate=False)
+    obtain_results(3, results_folder=results_folder, plots_folder=plots_folder, simulate=False)
 
-    obtain_algo_perfromance(results_folder=results_folder, n_min=50, n_step=50, n_max=4000)
+    #obtain_algo_perfromance(results_folder=results_folder, n_min=50, n_step=50, n_max=4000)
 
     
     # Simulating only for the weeks relevant to travel

@@ -275,6 +275,10 @@ def apply_preparatory(df, output_file_name):
 
     individual_ids = df["IndividualID"].unique()
 
+    # Here delete all weeks where TWSWeek = 53 as that is not a real week of the year
+
+    df = df[df["TWSWeek"] != 53]
+
     df_by_i = []
 
     for i in individual_ids:
@@ -300,6 +304,10 @@ def apply_preparatory(df, output_file_name):
         i_df["WeekRollover"] = i_df["WeekRollover"].cumsum()
 
         i_df["TWSWeekNew"] = i_df["TWSWeek"] + i_df["WeekRollover"]
+
+        # Moving to January..
+
+        i_df.loc[i_df["TWSWeekNew"] == 53, "TWSWeekNew"] = 1
 
         #logging.debug(i_df[["TravelWeekDay_B01ID", "WeekDayDiff", "WeekRollover", "TWSWeek", "TWSWeekNew"]])
 
