@@ -33,35 +33,79 @@ travel_survey_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl
 travel_survey_df = pd.read_pickle(travel_survey_path)
 
 
+def return_R2():
+    
+
+
+
 
 def obtain_results(N_sims, results_folder, plots_folder=None,
-                   travel_weeks_sim=list(range(1, 54)),
+                   start_week = 39,
                    travel_weeks_eca=list(range(39, 53)),
                    simulate=True,
                    test_index=None,
                    testing_performance=False,
                    home_shift = cfg.home_shift):
+    
+    # Load all weeks of ECA data individually
+    
+    ECA_data = np.zeros( (15, 2016) )
 
-    # Load ECA target vector
-    with open(results_folder + f'/y_ECA_{travel_weeks_eca[0]}-{travel_weeks_eca[-1]}.pkl', 'rb') as f:
+    for i, week in enumerate(range(39, 52  + 1)):
+        # Load ECA target vector foe every week
+        with open(results_folder + f'/y_ECA_{week}-{week}.pkl', 'rb') as f:
+            y_eca = pickle.load(f)
+            y_eca = np.array(y_eca)
+            logging.debug(f"{week}, {y_eca.shape}")
+
+            ECA_data[i, :] = y_eca
+
+    with open(results_folder + f'/y_ECA_39-52.pkl', 'rb') as f:
         y_eca = pickle.load(f)
+        y_eca = np.array(y_eca)
+        logging.debug(y_eca.shape)
+
+        ECA_data[-1, :] = y_eca
+
+    # Stacking across sim dimension to make for easier calculation
+    ECA_data = np.stack([ECA_data]*N_sims, axis=2)
+
+    logging.debug(ECA_data.shape)
+
 
     # Run simulation
     if simulate:
         slots_5_week = int(1440 * 7 / 5)
-        results_matrix = np.zeros((N_sims, slots_5_week))
+
+        results_matrix = np.zeros((52 - 39 + 2, slots_5_week, N_sims))
         sim_times = np.zeros(N_sims)
 
         for n in range(N_sims):
             sim_start_time = time.time()
 
-            charging_df = charging_logic(travel_survey_df, travel_weeks=travel_weeks_sim, test_index=test_index)
+            for i, week in enumerate(range(39, 52+1)):
+
+                charging_df = charging_logic(travel_survey_df, travel_weeks=[week], test_index=test_index)
+                charging_df = output_full_long_df(charging_df)
+                wide_df = output_wide_df(charging_df)
+
+                num_i = len(wide_df)
+                demand_vector = wide_df.iloc[:, :-1].sum()
+                results_matrix[i, : , n] = demand_vector.values / num_i
+
+                logging.info(f"Week {week} for sim {n+1} complete!")
+
+            # Now do an overall simulation over all weeks
+
+            charging_df = charging_logic(travel_survey_df, travel_weeks=list(range(1,52+1)), test_index=test_index)
             charging_df = output_full_long_df(charging_df)
             wide_df = output_wide_df(charging_df)
 
             num_i = len(wide_df)
             demand_vector = wide_df.iloc[:, :-1].sum()
-            results_matrix[n, :] = demand_vector.values / num_i
+            results_matrix[-1, : , n] = demand_vector.values / num_i
+
+            logging.info(f"Overall weeks 1 -52 simulation complete")
 
             sim_times[n] = time.time() - sim_start_time
             logging.info(f"Simulation {n + 1} of {N_sims} complete in {sim_times[n]:.2f}s")
@@ -74,7 +118,7 @@ def obtain_results(N_sims, results_folder, plots_folder=None,
         x = demand_vector.index
         x_labels = create_labels(wide_df)
 
-        with open(results_folder + f'/results_matrix-{N_sims}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pkl', 'wb') as f:
+        with open(results_folder + f'/results_matrix-{N_sims}_3D.pkl', 'wb') as f:
             pickle.dump(results_matrix, f)
         with open(results_folder + f'/x.pkl', 'wb') as f:
             pickle.dump(x, f)
@@ -83,29 +127,40 @@ def obtain_results(N_sims, results_folder, plots_folder=None,
 
     # Load from file if not simulating
     else:
-        with open(results_folder + f'/results_matrix-{N_sims}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pkl', 'rb') as f:
+        with open(results_folder + f'/results_matrix-{N_sims}_3D.pkl', 'rb') as f:
             results_matrix = pickle.load(f)
         with open(results_folder + f'/x.pkl', 'rb') as f:
             x = pickle.load(f)
         with open(results_folder + f'/x_labels.pkl', 'rb') as f:
             x_labels = pickle.load(f)
 
+        logging.debug(results_matrix.shape)
+
     # Guard R² and plotting fully under not testing_performance
     if not testing_performance:
         # R² Calculation
-        RSS = np.sum((results_matrix - y_eca) ** 2, axis=1)
-        TSS = np.sum((y_eca - np.mean(y_eca)) ** 2)
+
+        # Results for an RSS for each time slot for each simulation
+        RSS = np.sum((results_matrix - ECA_data) ** 2, axis=1)
+
+        logging.debug(f"RSS shape: {RSS.shape}")
+
+
+        TSS = np.sum((ECA_data - np.mean(ECA_data, axis=1, keepdims=True)) ** 2, axis=1)
+
+        logging.debug(f"TSS shape: {TSS.shape}")
+
         R_2 = 1 - RSS / TSS
-        logging.info(f"R² (first 15): {R_2[:15]}")
+        logging.debug(f"R² (first 15): {R_2[:15]}")
 
         # Save R² values
-        with open(results_folder + f'/R_2_{N_sims}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}.pkl', 'wb') as f:
+        with open(results_folder + f'/R_2_{N_sims}_3D.pkl', 'wb') as f:
             pickle.dump(R_2, f)
 
-        # Plot simulation vs ECA + R² distribution
-        mean_curve = np.mean(results_matrix, axis=0)
-        lower_bound = np.percentile(results_matrix, 2.5, axis=0)
-        upper_bound = np.percentile(results_matrix, 97.5, axis=0)
+        # Plot simulation vs ECA + R² distribution only for overall plot
+        mean_curve = np.mean(results_matrix, axis=2)[-1,:]
+        lower_bound = np.percentile(results_matrix, 2.5, axis=2)[-1,:]
+        upper_bound = np.percentile(results_matrix, 97.5, axis=2)[-1,:]
 
         plt.figure(figsize=(15, 6))
 
@@ -121,15 +176,16 @@ def obtain_results(N_sims, results_folder, plots_folder=None,
 
         # R² histogram
         plt.subplot(2, 1, 2)
-        sns.histplot(R_2, kde=True, bins=10, color='steelblue')
+        sns.histplot(R_2[-1,:], kde=True, bins=10, color='steelblue')
         plt.xlabel('R²')
         plt.ylabel('Density')
         plt.grid()
 
         plt.tight_layout()
-        plot_path = plots_folder + f"sim_plot_{N_sims}_{travel_weeks_sim[0]}-{travel_weeks_sim[-1]}_homeshift{home_shift}.pdf"
+        plot_path = plots_folder + f"sim_plot_{N_sims}_3D_homeshift{home_shift}.pdf"
         logging.info(f"Saved plot to {plot_path}")
         plt.savefig(plot_path, format="pdf")
+
 
     return results_matrix
 
@@ -195,7 +251,8 @@ if __name__ == "__main__":
 
     # Simulating for all weeks of the year
 
-    obtain_results(100, results_folder=results_folder, plots_folder=plots_folder, simulate=True)
+    obtain_results(3, results_folder=results_folder, plots_folder=plots_folder, simulate=False)
+
 
     #obtain_algo_perfromance(results_folder=results_folder, n_min=50, n_step=50, n_max=4000)
 

@@ -239,6 +239,11 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
 
                     if not last_trip_flag:
                         new_SOC = current_SOC -  charge_for_next_trip
+
+                    else:
+                        new_SOC = current_SOC
+
+                logging.debug(f"New SOC: {new_SOC}")
                     
                     
 
@@ -285,6 +290,6 @@ if __name__ == "__main__":
     full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl"
     full_df = pd.read_pickle(full_df_path)
 
-    test = charging_logic(full_df, output_file_name="charging_df", test_index=2, save_schedule=True)
+    test = charging_logic(full_df, travel_weeks=[1], output_file_name="charging_df", test_index=15, save_schedule=True)
 
     
