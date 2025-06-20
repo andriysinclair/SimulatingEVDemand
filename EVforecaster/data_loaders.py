@@ -315,9 +315,10 @@ def apply_preparatory(df, output_file_name):
 
     df = pd.concat(df_by_i)
 
-    logging.info(f"Unique travel weeks new: {df["TWSWeekNew"].unique().max()}")
-    logging.info(f"Unique travel weeks: {df["TWSWeek"].unique().max()}")
-    logging.info(f"Unique travel year: {df["TravelYear"].unique().max()}")
+    logging.info(f"Unique travel weeks new: {df["TWSWeekNew"].max()}")
+    #logging.info(f"Unique travel weeks: {df["TWSWeek"].unique()}")
+    logging.info(f"Unique travel year: {df["TravelYear"].unique()}")
+    logging.info(df["TravelYear"].value_counts())
 
     df.to_pickle(cfg.root_folder + f"/dataframes/{output_file_name}.pkl")
 
@@ -330,7 +331,7 @@ def data_loader_end_to_end(travel_year, raw_data_frames_loaded=True):
 
     # Load in all your data frames
     if raw_data_frames_loaded is False:
-        trip_df = trip_data_loader(survey_years=list(range(2016,2024)), output_file_name=f"trip_df_2016_2023", is_loaded=False)
+        trip_df = trip_data_loader(survey_years=list(range(2012,2019)), output_file_name=f"trip_df_2012_2019", is_loaded=False)
         logging.info(f"Trip data loaded!")
         day_df = day_data_loader(output_file_name="day_df", is_loaded=False)
         logging.info("Day data loaded!")
@@ -361,6 +362,6 @@ def data_loader_end_to_end(travel_year, raw_data_frames_loaded=True):
 
 if __name__ == "__main__":
 
-    df = data_loader_end_to_end(travel_year=[2017], raw_data_frames_loaded=False)
+    df = data_loader_end_to_end(travel_year=[2012,2013,2014,2015,2016,2017, 2018], raw_data_frames_loaded=True)
 
 

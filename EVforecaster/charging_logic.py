@@ -9,14 +9,13 @@ from charging_logic_auxillary import generate_charger, obtain_decision_to_charge
 
 
 
-def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,  
+def charging_logic(df, home_shift, travel_weeks = list(range(1,55)), output_file_name=None,  
                    battery_size_phev = cfg.battery_size_phev,
                    battery_size_bev = cfg.battery_size_bev,
                    car_types = cfg.car_types,
                     is_loaded=False, test_index=None,
                     charging_rates = cfg.charging_rates,
                     save_schedule = False,
-                    home_shift = cfg.home_shift,
                     ) -> pd.DataFrame:
     
     """
@@ -71,7 +70,8 @@ def charging_logic(df, travel_weeks = list(range(1,55)), output_file_name=None,
                          "TravelYear": [],
                          "CarType": [],
                          "BatterySize": [],
-                         "Efficiency": []} 
+                         "Efficiency": [],
+                         } 
         
         total_trips = 0
         negative_trips = 0
