@@ -24,9 +24,64 @@ import config as cfg
 import logging
 import time
 import pickle
-from charging_logic import charging_logic
-from demand_curves import output_full_long_df, output_wide_df, create_labels
+from EVforecasterModules.charging_logic import charging_logic
+from EVforecasterModules.demand_curves import output_full_long_df, output_wide_df, create_labels
 from scipy.stats import mannwhitneyu
+
+def simulate(N_sims, 
+             df, 
+             home_shift, 
+             week, 
+             battery_size_phev,
+            battery_size_bev,
+            car_types,
+            charging_rates,
+            home_charger_likelihood,
+            work_charger_likelihood,
+            public_charger_likelihood,
+            min_stop_time_to_charge,
+            SOC_charging_prob,
+            test_index = None):
+
+    slots_5_week = int(1440 * 7 / 5)  # 2016 5-min bins in a week
+
+    results_matrix = np.zeros((N_sims, slots_5_week))
+    sim_times = np.zeros(N_sims)
+
+    for n in range(N_sims):
+
+        sim_start_time = time.time()
+
+        charging_df = charging_logic(df, 
+                                     home_shift=home_shift, 
+                                     travel_weeks=[week], 
+                                     test_index=test_index,
+                                     battery_size_bev=battery_size_bev, 
+                                     battery_size_phev=battery_size_phev, 
+                                     car_types=car_types,
+                                     charging_rates=charging_rates, 
+                                     home_charger_likelihood=home_charger_likelihood,
+                                     work_charger_likelihood=work_charger_likelihood, 
+                                     public_charger_likelihood=public_charger_likelihood,
+                                     min_stop_time_to_charge=min_stop_time_to_charge,
+                                     SOC_charging_prob=SOC_charging_prob)
+        
+        charging_df = output_full_long_df(charging_df)
+        wide_df = output_wide_df(charging_df)
+
+        num_i = len(wide_df)
+
+        demand_vector = wide_df.iloc[:, :-1].sum() # Total demand vector
+
+        results_matrix[n, : ] = demand_vector.values / num_i   # Average Demand vector
+
+        logging.info(f"Completed sim {n+1} for week: {week}!")
+
+        sim_times[n] = time.time() - sim_start_time
+        logging.info(f"Simulation {n + 1} of {N_sims} complete in {sim_times[n]:.2f}s")
+
+
+    return results_matrix, sim_times
 
 
 def return_R2(results_matrix, ECA_data, N_sims, home_shift, suffix=""):
@@ -98,37 +153,42 @@ def surface_plot_3d():
 
 
 
-def obtain_results(N_sims, results_folder, home_shift, plots_folder, travel_survey_df,
+def obtain_results(N_sims, results_folder, home_shift, plots_folder, travel_survey_df, weeks,
                    simulate=True,
                    test_index=None,
                    testing_performance=False,
                    plot=True,
+                   ECA_overlay = True,
                    suffix=""):
     
     # Load all weeks of ECA data individually
-    
-    ECA_data = np.zeros( (15, 2016) )
 
-    for i, week in enumerate(range(39, 52  + 1)):
-        # Load ECA target vector foe every week
-        with open(results_folder + f'/y_ECA_{week}-{week}.pkl', 'rb') as f:
+
+
+    if ECA_overlay:
+    
+        ECA_data = np.zeros( (15, 2016) )
+
+        for i, week in enumerate(range(39, 52  + 1)):
+            # Load ECA target vector foe every week
+            with open(results_folder + f'/y_ECA_{week}-{week}.pkl', 'rb') as f:
+                y_eca = pickle.load(f)
+                y_eca = np.array(y_eca)
+                logging.debug(f"{week}, {y_eca.shape}")
+
+                ECA_data[i, :] = y_eca
+
+        with open(results_folder + f'/y_ECA_39-52.pkl', 'rb') as f:
             y_eca = pickle.load(f)
             y_eca = np.array(y_eca)
-            logging.debug(f"{week}, {y_eca.shape}")
+            logging.debug(y_eca.shape)
 
-            ECA_data[i, :] = y_eca
+            ECA_data[-1, :] = y_eca
 
-    with open(results_folder + f'/y_ECA_39-52.pkl', 'rb') as f:
-        y_eca = pickle.load(f)
-        y_eca = np.array(y_eca)
-        logging.debug(y_eca.shape)
+        # Stacking across sim dimension to make for easier calculation
+        ECA_data = np.stack([ECA_data]*N_sims, axis=2)
 
-        ECA_data[-1, :] = y_eca
-
-    # Stacking across sim dimension to make for easier calculation
-    ECA_data = np.stack([ECA_data]*N_sims, axis=2)
-
-    logging.debug(ECA_data.shape)
+        logging.debug(ECA_data.shape)
 
 
     # Run simulation

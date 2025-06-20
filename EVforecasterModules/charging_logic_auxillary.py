@@ -5,7 +5,7 @@ import numpy as np
 import logging
 import config as cfg
 
-def generate_charger(x, home_charger_likelihood=cfg.charger_likelihood["home"], work_charger_likelihood=cfg.charger_likelihood["work"], public_charger_likelihood=cfg.charger_likelihood["other"]) -> int:
+def generate_charger(x, home_charger_likelihood, work_charger_likelihood, public_charger_likelihood) -> int:
     """
     generate_charger 
 

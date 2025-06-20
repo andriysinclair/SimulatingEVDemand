@@ -104,7 +104,6 @@ def output_full_long_df(df):
 
     #Assert all match
 
-    df.to_csv(cfg.root_folder + "/output_csvs/long_df.csv", index=False)
 
     #assert df["MathMatch"].all(), "Mismatch between calculated and actual TotalPowerUsed!"
     return df
@@ -166,8 +165,6 @@ def output_wide_df(df, location=[1,2,3]):
 
     wide_df = pd.DataFrame(all_rows)  
 
-    wide_df.to_csv(cfg.root_folder + "/output_csvs/wide_df.csv", index=False)
-
     return wide_df
 
 def create_labels(df):
@@ -206,95 +203,6 @@ def create_labels(df):
         return new_labels
 
 
-
-def generate_plot(*args, travel_weeks_label, travel_year_label, location=None, total=False):
-
-    location_mapping = {1: "Work",
-                        2: "Other",
-                        3: "Home"}
-
-    # Looping through all data frames in args
-
-    for i, arg in enumerate(args):
-
-        # Obtaining number of individuals
-
-        num_i  = len(arg)
-
-        # Removing individual id
-        sums_over_interval = arg.iloc[:,:-1].sum()
-
-        x = sums_over_interval.index
-
-        # Calculating average consumption over 5 min bin...
-
-        y = sums_over_interval.values / num_i
-
-        # Creating neat labels for x-axis
-
-        new_labels = create_labels(arg)
-
-        ## PLOTS ###
-
-        if not total:
-            plt.plot(x, y, label=location_mapping[location])
-
-        else:
-            plt.plot(x, y, label="Total")
-
-        
-    if total:
-        plt.ylabel("Demand (kWh)")
-
-
-    plt.xticks(ticks=range(0, len(new_labels), 72), labels=new_labels[::72], rotation=45)
-    plt.legend()
-
-    if not total:
-        plt.title(f"{travel_weeks_label} of {travel_year_label} by location.")
-
-    if total:
-        plt.title(f"{travel_weeks_label} of {travel_year_label} total.")
-
-    plt.tight_layout()
-
-    plt.grid()
-
-
-def plot_weekly_demand(charging_df, output_file_name, week_of_the_year, week_label, year_label, save_fig = True):
-
-    # Transform the charging df
-
-    charging_df = charging_df.copy()
-
-    # Plotting across all locations
-
-    long_df = output_full_long_df(charging_df)
-    wide_df_all = output_wide_df(long_df, week_of_the_year=week_of_the_year)
-
-    plt.figure(figsize=(15,6))
-
-    plt.subplot(1,2,1)
-    generate_plot(wide_df_all, travel_weeks_label=week_label, travel_year_label=year_label, total=True)
-
-    # Secondary plot seggregated by location
-
-    locations = long_df["ChargeLoc"].unique()
-
-    plt.subplot(1,2,2)
-    for loc in locations:
-        wide_df_loc = output_wide_df(long_df, location=[loc], week_of_the_year=week_of_the_year)
-        generate_plot(wide_df_loc, travel_weeks_label=week_label, travel_year_label=year_label, location=loc, total=False)
-
-    # Subset the charging df
-
-    plt.tight_layout()
-
-    if save_fig:
-
-        plt.savefig(f"{plots_folder}{output_file_name}.pdf", format="pdf")
-
-
 if __name__ == "__main__":
 
     matplotlib.use("Agg")
@@ -310,23 +218,3 @@ if __name__ == "__main__":
 
     #df, demand_df = output_demand_curves(charging_df=charging__df, suffix_long="demand_all_loc_all_week_long",
     #                                     suffix_wide="demand_all_loc_all_week_wide", is_loaded=True, plot=True)
-
-    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_total", week_of_the_year=list(range(2,53)), week_label="Full Year", year_label=2017)
-    #plot_weekly_demand(charging_df=charging_df, output_file_name="plot_total", week_of_the_year=list(range(1,60)))
-
-
-
-    '''
-    weeks_winter = [49,50,51,52] + list(range(1,10))
-    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_winter", week_of_the_year=weeks_winter, week_label="Winter", year_label=2017)
-
-    weeks_spring = list(range(10,22))
-    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_spring", week_of_the_year=weeks_spring, week_label="Spring", year_label=2017)
-
-    weeks_summer = list(range(22,36))
-    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_summer", week_of_the_year=weeks_summer, week_label="Summer", year_label=2017)
-
-    weeks_autumn = list(range(36,49))
-    plot_weekly_demand(charging_df=charging_df, output_file_name="plot_autumn", week_of_the_year=weeks_autumn, week_label="Autumn", year_label=2017)
-
-    '''
