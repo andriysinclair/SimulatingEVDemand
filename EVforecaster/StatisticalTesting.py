@@ -264,18 +264,20 @@ def obtain_results(N_sims, results_folder, home_shift, plots_folder, travel_surv
 
     return results_matrix, R_2, R_2_overall_v_week
 
-def run_statistical_tests(home_shift_1, home_shift_2, plots_folder):
+def run_statistical_tests(home_shift_1, home_shift_2, suffix1, suffix2, plots_folder):
     # Running Man-Whitney test unpaired
 
     results_matrix0, R_2_0, R_2_overall_v_week0 = obtain_results(N_sims=100, home_shift=home_shift_1, 
                                                               results_folder=results_folder, 
                                                               plots_folder=plots_folder, simulate=False,
-                                                              plot=False)
+                                                              plot=False, suffix=suffix1,
+                                                              travel_survey_df=travel_survey_df)
     
     results_matrix60, R_2_60, R_2_overall_v_week60 = obtain_results(N_sims=100, home_shift=home_shift_2, 
                                                             results_folder=results_folder, 
                                                             plots_folder=plots_folder, simulate=False,
-                                                            plot=False)
+                                                            plot=False, suffix=suffix2,
+                                                            travel_survey_df=travel_survey_df)
     
     # Getting the overall R2 result only
 
@@ -425,7 +427,7 @@ if __name__ == "__main__":
     obtain_results(100, travel_survey_df=travel_survey_df_aug, home_shift=60, 
                    results_folder=results_folder, plots_folder=plots_folder, simulate=False, suffix="aug")
 
-    #run_statistical_tests(home_shift_1=0, home_shift_2=60, plots_folder=plots_folder, travel_survey_df=travel_survey_df)
+    run_statistical_tests(home_shift_1=60, home_shift_2=60, suffix1="", suffix2="aug", plots_folder=plots_folder)
     #obtain_algo_perfromance(results_folder=results_folder, n_min=50, n_step=50, n_max=4000)
 
     

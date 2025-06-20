@@ -71,6 +71,10 @@ def charging_logic(df, home_shift, travel_weeks = list(range(1,55)), output_file
                          "CarType": [],
                          "BatterySize": [],
                          "Efficiency": [],
+                         "ChargeDecisionProb": [],
+                         "ChargeDecision": [],
+                         "CurrentSOC": [],
+                         "ReqCharge+1": []
                          } 
         
         total_trips = 0
@@ -170,7 +174,7 @@ def charging_logic(df, home_shift, travel_weeks = list(range(1,55)), output_file
                 
                 # Obtain individuals decision to charge
 
-                decision_to_charge = obtain_decision_to_charge(SOC=current_SOC, available_charger=available_charger,
+                decision_to_charge, charge_decision_prob = obtain_decision_to_charge(SOC=current_SOC, available_charger=available_charger,
                                                                time_duration_at_location=time_duration_at_location,
                                                                last_trip_flag=last_trip_flag,
                                                                min_stop_time_to_charge=cfg.min_stop_time_to_charge,
@@ -225,10 +229,16 @@ def charging_logic(df, home_shift, travel_weeks = list(range(1,55)), output_file
                     charging_dict["CarType"].append(car_type_for_i)
                     charging_dict["BatterySize"].append(battery_size_for_i)
                     charging_dict["Efficiency"].append(efficiency_for_i)
+                    charging_dict["ChargeDecisionProb"].append(charge_decision_prob)
+                    charging_dict["ChargeDecision"].append(decision_to_charge)
+                    charging_dict["CurrentSOC"].append(current_SOC)
+                    charging_dict["ReqCharge+1"].append(charge_for_next_trip)
 
                     # Removing charge required for next trip
                     if not last_trip_flag:
                         new_SOC -= charge_for_next_trip
+
+                        logging.debug(f"New SOC: {new_SOC}")
 
                     charge_start_time_list.append(charge_start_time)
                     charge_end_time_list.append(charge_end_time)
@@ -243,7 +253,27 @@ def charging_logic(df, home_shift, travel_weeks = list(range(1,55)), output_file
                     else:
                         new_SOC = current_SOC
 
-                logging.debug(f"New SOC: {new_SOC}")
+                    logging.debug(f"New SOC: {new_SOC}")
+
+                    if logging.getLogger().isEnabledFor(logging.DEBUG):
+                        # Adding rows for no charge
+                        charging_dict["TripID"].append(trip_id)
+                        charging_dict["TravelYear"].append(travel_year)
+                        charging_dict["TravelWeek"].append(travel_week)
+                        charging_dict["TravelDay"].append(travel_day)
+                        charging_dict["TotalPowerUsed"].append(0)
+                        charging_dict["ChargeStart"].append(0)
+                        charging_dict["ChargeEnd"].append(0)
+                        charging_dict["ChargeDuration"].append(0)
+                        charging_dict["ChargingRate"].append(charging_rate)
+                        charging_dict["ChargeLoc"].append(end_location)
+                        charging_dict["CarType"].append(car_type_for_i)
+                        charging_dict["BatterySize"].append(battery_size_for_i)
+                        charging_dict["Efficiency"].append(efficiency_for_i)
+                        charging_dict["ChargeDecisionProb"].append(charge_decision_prob)
+                        charging_dict["ChargeDecision"].append(decision_to_charge)
+                        charging_dict["CurrentSOC"].append(current_SOC)
+                        charging_dict["ReqCharge+1"].append(charge_for_next_trip)
                     
                     
 
@@ -262,6 +292,16 @@ def charging_logic(df, home_shift, travel_weeks = list(range(1,55)), output_file
         charging_df = pd.DataFrame(charging_dict)
 
         charging_df = pd.merge(charging_df, df, on="TripID")
+
+        charging_df = charging_df[[
+        "IndividualID", "CarType", "BatterySize", "Efficiency", "ReqCharge+1",
+        "TripStartLoc", "TripEndLoc", "IsCharger", "TripStart", "TripEnd", "TripDisExSW",
+        "TravelYear_y", "TravelWeekDay_B01ID", "TWSWeekNew", "Distance+1", "TimeEndLoc",
+        "CurrentSOC", "ChargeDecision", "ChargeDecisionProb", "ChargingRate",
+        "TotalPowerUsed", "ChargeStart", "ChargeEnd", "ChargeDuration", "TravelDay", "TravelWeek",
+        "ChargeLoc"
+            ]]
+
         logging.debug(f"Total trips: {total_trips}")
         logging.debug(f"Negative trips: {negative_trips}")
         logging.debug(f"% negative trips: {negative_trips/total_trips*100:.2f}%")
@@ -290,6 +330,9 @@ if __name__ == "__main__":
     full_df_path = cfg.root_folder + "/dataframes/Ready_to_model_df_[2017].pkl"
     full_df = pd.read_pickle(full_df_path)
 
-    test = charging_logic(full_df, travel_weeks=[1], output_file_name="charging_df", test_index=15, save_schedule=True)
+    test = charging_logic(full_df, travel_weeks=list(range(1,53)), 
+                          output_file_name="charging_df", 
+                          test_index=15, save_schedule=True,
+                          home_shift=60)
 
     

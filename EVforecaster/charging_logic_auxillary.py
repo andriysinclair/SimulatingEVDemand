@@ -56,13 +56,13 @@ def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location,
     if available_charger == 0:
 
         logging.debug(f"No charger available")
-        return 0
+        return 0, 0
     
     
     elif time_duration_at_location < min_stop_time_to_charge and not last_trip_flag:
 
         logging.debug(f"Insufficient time spent at location to charge")
-        return 0
+        return 0, 0
     
     logging.debug("charger is available and car has stopped for sufficient time")
     SOC_percentage = SOC/battery_size
@@ -78,7 +78,7 @@ def obtain_decision_to_charge(SOC, available_charger, time_duration_at_location,
 
     logging.debug(f"charging decision: {charge_decision}")
 
-    return int(charge_decision)
+    return int(charge_decision), charge_decision_prob
 
 def calculate_charging_session(SOC, location_charging_rate, time_duration_at_location, last_trip_flag,
                                charge_start_time, battery_size, home_shift)->tuple:
