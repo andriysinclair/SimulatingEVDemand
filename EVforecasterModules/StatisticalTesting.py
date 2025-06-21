@@ -75,10 +75,10 @@ def simulate(N_sims,
 
         results_matrix[n, : ] = demand_vector.values / num_i   # Average Demand vector
 
-        logging.info(f"Completed sim {n+1} for weeks: {week[0]}-{week[-1]}!")
-
         sim_times[n] = time.time() - sim_start_time
-        logging.info(f"Simulation {n + 1} of {N_sims} complete in {sim_times[n]:.2f}s")
+
+        print(f"Completed sim {n+1}/{N_sims} for weeks {week[0]}–{week[-1]} in {sim_times[n]:.2f}s", end="\r")
+
 
 
     return results_matrix, sim_times
@@ -147,6 +147,8 @@ def plot_R2(results_matrix, ECA_data):
     plt.ylabel('Density')
     plt.grid()
     plt.tight_layout()
+
+    return R_2
 
 
 

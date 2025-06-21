@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+from scipy.stats import mannwhitneyu
 
 # Add project root to sys.path
 #sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -148,6 +149,8 @@ class EVforecaster:
 
             self.df = pd.read_pickle(filepath)
 
+        logging.info(f"Travel years in dataset: {self.df["TravelYear"].unique()}")
+
 
     def generate_forecasts(self, N_sims, weeks, home_shift, experiment_name,
                                 results_folder = cfg.root_folder + "/results/",
@@ -162,6 +165,8 @@ class EVforecaster:
                                 SOC_charging_prob = cfg.SOC_charging_prob,
                                 ECA_overlay = None):
         
+        results_dict = {}  
+
         df = self.df.copy()
 
         # Loading labels for plotting
@@ -170,28 +175,46 @@ class EVforecaster:
             x = pickle.load(f)
         with open(self.results_folder + f'/x_labels.pkl', 'rb') as f:
             x_labels = pickle.load(f)
+
+        # Creating paths for plots and results
+        array_path = self.results_folder + experiment_name + ".pkl"
+        plot_path = self.plots_folder + experiment_name + ".pdf"
+
+        # Check if simulation already exists
+
+        if not os.path.isfile(array_path):
         
-        results_matrix, sim_times = simulate(N_sims=N_sims,
-                                            home_shift=home_shift,
-                                            week=weeks,
-                                            df=df,
-                                            battery_size_bev=battery_size_bev,
-                                            battery_size_phev=battery_size_phev,
-                                            car_types=car_types,
-                                            charging_rates=charging_rates,
-                                            home_charger_likelihood=home_charger_likelihood,
-                                            work_charger_likelihood=work_charger_likelihood,
-                                            public_charger_likelihood=public_charger_likelihood,
-                                            min_stop_time_to_charge=min_stop_time_to_charge,
-                                            SOC_charging_prob=SOC_charging_prob)
+            results_matrix, sim_times = simulate(N_sims=N_sims,
+                                                home_shift=home_shift,
+                                                week=weeks,
+                                                df=df,
+                                                battery_size_bev=battery_size_bev,
+                                                battery_size_phev=battery_size_phev,
+                                                car_types=car_types,
+                                                charging_rates=charging_rates,
+                                                home_charger_likelihood=home_charger_likelihood,
+                                                work_charger_likelihood=work_charger_likelihood,
+                                                public_charger_likelihood=public_charger_likelihood,
+                                                min_stop_time_to_charge=min_stop_time_to_charge,
+                                                SOC_charging_prob=SOC_charging_prob)
+            
+        if os.path.isfile(array_path):
+
+            logging.info(f"Simulation with name: {experiment_name} already exists in /results. Loading ...")
+            
+            # Load the data from pickle
+
+            with open(array_path, "rb") as f:
+                results_dict = pickle.load(f)
+
+            results_matrix = results_dict["results_matrix"]
+            sim_times = results_dict["sim_times"]
         
         # Moving to results folder
 
         logging.info(f"Final post-simulation results matrix shape: {results_matrix.shape}")
 
-        # Creating paths for plots and results
-        array_path = self.results_folder + experiment_name + ".pkl"
-        plot_path = self.plots_folder + experiment_name + ".pdf"
+
 
         # If no ECA overlay
         if ECA_overlay is None:
@@ -267,9 +290,12 @@ class EVforecaster:
 
                 plt.subplot(2,1,2)
 
-                plot_R2(results_matrix=results_matrix, ECA_data=y_ECA)
+                R_2 = plot_R2(results_matrix=results_matrix, ECA_data=y_ECA)
 
                 plt.savefig(plot_path, format="pdf")
+
+                # Saving R_2 to results
+                results_dict["R2"] = R_2
 
             if not os.path.isfile(ECA_path):
                 raise FileNotFoundError(f"{ECA_name} not found in /data directory.\n Please download Electric Chargepoint Analysis data \n from 'https://www.gov.uk/government/statistics/electric-chargepoint-analysis-2017-domestics' \n and move inside /data")
@@ -278,16 +304,29 @@ class EVforecaster:
 
         logging.info(f"saving results to {array_path}")
 
+        results_dict["results_matrix"] = results_matrix
+        results_dict["sim_times"] = sim_times
+
         with open(array_path, "wb") as f:
-            pickle.dump(results_matrix, f)
-        
-        return results_matrix
+            pickle.dump(results_dict, f)
+
     
     def run_experiment(experiment1_r2_path, experiment2_r2_path):
-        pass
+
+        with open(experiment1_r2_path, "rb") as f:
+            results_dict1 = pickle.load(f)
+
+        with open(experiment2_r2_path, "rb") as f:
+            results_dict2 = pickle.load(f)
+
+        # Extract R2 from experiment 1
+
+        R2_1 =  results_dict1["R2"]
+        R2_2 =  results_dict2["R2"]
+
+        #  Run experiments
+
+        stat, p = mannwhitneyu(R2_1, R2_2, alternative='two-sided')
+        logging.info(f"Mann–Whitney U test statistic: {stat:.4f}, p-value: {p:.4f}")
 
 
-
-test = EVforecaster(travel_years=[2017])
-
-test.generate_forecasts(N_sims=100, weeks= list(range(1,53)), home_shift=60, ECA_overlay=list(range(39,53)), experiment_name="100_simulations_weeks_1-52_homeshift=60")

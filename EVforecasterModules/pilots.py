@@ -198,33 +198,7 @@ if __name__ == "__main__":
     # path to electric charge point analysis
     df_path = cfg.root_folder + "/data/electric-chargepoint-analysis-2017-raw-domestics-data.csv"
 
-    # Save full data, 4/5 weekly and by month
-    
-    # Full range of data
-    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                           ECA_weeks=list(range(39,53)),
-                            results_folder=results_folder,
-                           )
-    
-    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                        ECA_weeks=list(range(39,44)),
-                        results_folder=results_folder,
-                        )
-    
-    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                        ECA_weeks=list(range(44,49)),
-                        results_folder=results_folder,
-                        )
-    
-    df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                        ECA_weeks=list(range(49,53)),
-                        results_folder=results_folder,
-                        )
-    
-    for i in range(39, 53):
-        df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                    ECA_weeks=[i],
-                    results_folder=results_folder,
-                    )
+    df = pd.read_csv(df_path)
 
+    print(df.columns)
 
