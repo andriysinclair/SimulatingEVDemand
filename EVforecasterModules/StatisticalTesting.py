@@ -54,7 +54,7 @@ def simulate(N_sims,
 
         charging_df = charging_logic(df, 
                                      home_shift=home_shift, 
-                                     travel_weeks=[week], 
+                                     travel_weeks=week, 
                                      test_index=test_index,
                                      battery_size_bev=battery_size_bev, 
                                      battery_size_phev=battery_size_phev, 
@@ -75,13 +75,16 @@ def simulate(N_sims,
 
         results_matrix[n, : ] = demand_vector.values / num_i   # Average Demand vector
 
-        logging.info(f"Completed sim {n+1} for week: {week}!")
+        logging.info(f"Completed sim {n+1} for weeks: {week[0]}-{week[-1]}!")
 
         sim_times[n] = time.time() - sim_start_time
         logging.info(f"Simulation {n + 1} of {N_sims} complete in {sim_times[n]:.2f}s")
 
 
     return results_matrix, sim_times
+
+def apply_ECA_overlay():
+    pass
 
 
 def return_R2(results_matrix, ECA_data, N_sims, home_shift, suffix=""):
@@ -112,7 +115,6 @@ def plot_demand_R2(results_matrix, ECA_data, x, x_labels, week, N_sims, home_shi
     week_map = dict(zip(week_keys, matrix_index_values))
 
     logging.info(week_map)
-
 
     # Plot simulation vs ECA + R² distribution only for overall plot
     mean_curve = np.mean(results_matrix, axis=2)[week_map[week],:]

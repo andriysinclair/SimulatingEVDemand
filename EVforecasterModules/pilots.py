@@ -6,18 +6,13 @@ import logging
 import numpy as np
 import pickle
 
-from demand_curves import output_wide_df, create_labels
+from EVforecasterModules.demand_curves import output_wide_df, create_labels
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
 
-import config as cfg
+def demand_curves_ECA(ECA_df_path, results_folder, ECA_weeks=list(range(39,54))) -> pd.DataFrame:
 
-csv_folder = cfg.root_folder + "/output_csvs/"
-
-def demand_curves_ECA(df_path, results_folder, travel_weeks=list(range(39,54)),
-                     csv_folder=csv_folder, output_file_name=None,
-                      ) -> pd.DataFrame:
     """
     modify_df 
 
@@ -28,11 +23,10 @@ def demand_curves_ECA(df_path, results_folder, travel_weeks=list(range(39,54)),
         df (pd.DataFrame): df relating to pilot study
     """    
 
-    df = pd.read_csv(df_path)
+    df = pd.read_csv(ECA_df_path)
 
-    # Taking a random draw to reduce comp
 
-    
+
     df["ChargeLoc"] = 3
 
     # Count how many charges took >25kW
@@ -99,7 +93,7 @@ def demand_curves_ECA(df_path, results_folder, travel_weeks=list(range(39,54)),
     df["TravelDay"] = df["StartDateTime"].dt.day_of_week+1
     df["TravelWeek"] = df["StartDateTime"].dt.isocalendar().week
 
-    df = df[df["TravelWeek"].isin(travel_weeks)]
+    df = df[df["TravelWeek"].isin(ECA_weeks)]
 
     logging.info(f"Included travel weeks: {df["TravelWeek"].unique()}")
 
@@ -174,9 +168,6 @@ def demand_curves_ECA(df_path, results_folder, travel_weeks=list(range(39,54)),
 
     logging.info(f"Average 5 min demand: {df["5_min_demand"].mean()}")
     
-
-    df.to_csv(csv_folder + f"/{output_file_name}.csv", index=False)
-
     # Filtering by week of the year
 
 
@@ -192,34 +183,7 @@ def demand_curves_ECA(df_path, results_folder, travel_weeks=list(range(39,54)),
 
     # Saving output vector
 
-    with open(results_folder + f'y_ECA_{travel_weeks[0]}-{travel_weeks[-1]}.pkl', 'wb') as f:
-        pickle.dump(y, f)
-
-    '''
-
-    plt.figure(figsize=(15,6))
-
-    x = demand_vector.index
-
-    x_labels = create_labels(wide_df)
-
-    plt.figure(figsize=(15,6))
-    plt.tight_layout()
-    plt.plot(x, y, label="Electric Chargepoint Analysis 2017")
-    plt.ylabel('Demand (kWh/5 minutes)/ EV')
-    #plt.title('Simulated Weekly EV Charging Demand')
-    plt.xticks(ticks=range(0, len(x_labels), 72), labels=x_labels[::72], rotation=45)
-    plt.grid()
-
-    plt.legend()
-
-    if save_fig:
-
-        plt.savefig(f"{plots_folder}{output_file_name}.pdf", format="pdf")
-    
-    '''
-
-    return df
+    return y
 
 
 
@@ -238,28 +202,28 @@ if __name__ == "__main__":
     
     # Full range of data
     df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                           travel_weeks=list(range(39,53)),
+                           ECA_weeks=list(range(39,53)),
                             results_folder=results_folder,
                            )
     
     df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                        travel_weeks=list(range(39,44)),
+                        ECA_weeks=list(range(39,44)),
                         results_folder=results_folder,
                         )
     
     df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                        travel_weeks=list(range(44,49)),
+                        ECA_weeks=list(range(44,49)),
                         results_folder=results_folder,
                         )
     
     df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                        travel_weeks=list(range(49,53)),
+                        ECA_weeks=list(range(49,53)),
                         results_folder=results_folder,
                         )
     
     for i in range(39, 53):
         df = demand_curves_ECA(df_path=df_path, output_file_name="ECA_long",
-                    travel_weeks=[i],
+                    ECA_weeks=[i],
                     results_folder=results_folder,
                     )
 

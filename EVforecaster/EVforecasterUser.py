@@ -13,6 +13,7 @@ from EVforecasterModules import config as cfg
 from EVforecasterModules.data_loaders import data_loader_end_to_end
 from EVforecasterModules.charging_logic import charging_logic
 from EVforecasterModules.StatisticalTesting import simulate
+from EVforecasterModules.pilots import demand_curves_ECA
 
 print(cfg.root_folder)
 
@@ -51,8 +52,9 @@ class EVforecaster:
 
     def __init__(self, 
                  travel_years,
-                 data_folder=cfg.root_folder + "/data/",
+                 data_folder= cfg.root_folder + "/data/",
                  plots_folder = cfg.root_folder + "/plots/",
+                 results_folder = cfg.root_folder + "/results/",
                  survey_years = list(range(2012,2019))):
         """
         __init__ 
@@ -72,6 +74,7 @@ class EVforecaster:
         # This is the dataset merged and filtered on travel years
         self.dataset_name = f"{travel_years[0]}-{travel_years[-1]}-merged.pkl"
         self.data_folder = data_folder
+        self.results_folder = results_folder
         self.trip_path = None
         self.day_path = None
         self.household_path = None
@@ -145,7 +148,7 @@ class EVforecaster:
             self.df = pd.read_pickle(filepath)
 
 
-    def generate_forecasts(self, N_sims, weeks, home_shift,
+    def generate_forecasts(self, N_sims, weeks, home_shift, experiment_name,
                                 results_folder = cfg.root_folder + "/results/",
                                 battery_size_bev= cfg.battery_size_bev,
                                 battery_size_phev= cfg.battery_size_phev,
@@ -155,38 +158,109 @@ class EVforecaster:
                                 work_charger_likelihood= cfg.charger_likelihood["work"],
                                 public_charger_likelihood= cfg.charger_likelihood["other"],
                                 min_stop_time_to_charge = cfg.min_stop_time_to_charge,
-                                SOC_charging_prob = cfg.SOC_charging_prob):
+                                SOC_charging_prob = cfg.SOC_charging_prob,
+                                ECA_overlay = None):
         
         df = self.df.copy()
         
-        results_matrix_3D = np.zeros( (N_sims, 2016, len(weeks)) )
-
-        for index, week in enumerate(weeks):
-
-            results_matrix, sim_times = simulate(N_sims=N_sims,
-                                                home_shift=home_shift,
-                                                week=week,
-                                                df=df,
-                                                battery_size_bev=battery_size_bev,
-                                                battery_size_phev=battery_size_phev,
-                                                car_types=car_types,
-                                                charging_rates=charging_rates,
-                                                home_charger_likelihood=home_charger_likelihood,
-                                                work_charger_likelihood=work_charger_likelihood,
-                                                public_charger_likelihood=public_charger_likelihood,
-                                                min_stop_time_to_charge=min_stop_time_to_charge,
-                                                SOC_charging_prob=SOC_charging_prob)
-            
-            # Moving to results folder
-
-            results_matrix_3D[:,:,index] = results_matrix
-
-
-        logging.info(f"Final post-simulation results matrix shape: {results_matrix_3D.shape}")
+        results_matrix, sim_times = simulate(N_sims=N_sims,
+                                            home_shift=home_shift,
+                                            week=weeks,
+                                            df=df,
+                                            battery_size_bev=battery_size_bev,
+                                            battery_size_phev=battery_size_phev,
+                                            car_types=car_types,
+                                            charging_rates=charging_rates,
+                                            home_charger_likelihood=home_charger_likelihood,
+                                            work_charger_likelihood=work_charger_likelihood,
+                                            public_charger_likelihood=public_charger_likelihood,
+                                            min_stop_time_to_charge=min_stop_time_to_charge,
+                                            SOC_charging_prob=SOC_charging_prob)
         
-        return results_matrix_3D
+        # Moving to results folder
+
+        logging.info(f"Final post-simulation results matrix shape: {results_matrix.shape}")
+
+        if ECA_overlay is None:
+
+            # Plot and Save
+
+            # Return results
+            return results_matrix, sim_times
+        
+
+
+        # Add ECA overlay if desired
+
+        if ECA_overlay is not None:
+            logging.info(f"Applying ECA overlay")
+
+            # Ensure that the ECA file is in data
+            ECA_name = "electric-chargepoint-analysis-2017-raw-domestics-data.csv"
+
+            ECA_path = os.path.join(self.data_folder, ECA_name)
+
+            if os.path.isfile(ECA_path):
+                print(f"{ECA_name} successfully found in /data directory. Proceeding...")
+
+                print(f"Checking for previously created ECA overlay for weeks: {ECA_overlay[0]} - {ECA_overlay[-1]}")
+
+                # Check if ECA overlay file exists
+
+                ECA_demand_name = f"y_ECA_{ECA_overlay[0]}-{ECA_overlay[-1]}.pkl"
+
+                ECA_demand_path = os.path.join(self.results_folder, ECA_demand_name)
+
+                if not os.path.isfile(ECA_demand_path):
+                    logging.info(f"ECA demand curves, {ECA_demand_name}, do not exist in /results. Creating...")
+
+                    y_ECA = demand_curves_ECA(ECA_df_path=ECA_path,
+                                              results_folder=self.results_folder,
+                                              ECA_weeks=ECA_overlay,
+                                              )
+                    
+                    logging.info("ECA demand curve created!")
+
+                    # Saving to pickle
+
+                    y_ECA.to_pickle(ECA_demand_path)
+
+                if os.path.isfile(ECA_demand_path):
+                    logging.info(f"Successfully found {ECA_demand_name} in /results")
+
+                    y_ECA = pd.read_pickle(ECA_demand_path)
+
+
+                ## HERE APPLY THE ECA overlay
+
+                logging.debug(f"ECA shape: {y_ECA.shape}. ECA type: {type(y_ECA)}")
+
+                ## Load labels
+
+                with open(self.results_folder + f'/x.pkl', 'rb') as f:
+                    x = pickle.load(f)
+                with open(self.results_folder + f'/x_labels.pkl', 'rb') as f:
+                    x_labels = pickle.load(f)
+
+            if not os.path.isfile(ECA_path):
+                raise FileNotFoundError(f"{ECA_name} not found in /data directory.\n Please download Electric Chargepoint Analysis data \n from 'https://www.gov.uk/government/statistics/electric-chargepoint-analysis-2017-domestics' \n and move inside /data")
+
+
+            
+
+
+
+
+
+
+
+
+
+
+        
+        return results_matrix
     
 
 test = EVforecaster(travel_years=[2017])
 
-test.generate_forecasts(N_sims=3, weeks=[34, 35, 36], home_shift=60)
+test.generate_forecasts(N_sims=2, weeks= list(range(1,3)), home_shift=60, ECA_overlay=list(range(39,48)))
