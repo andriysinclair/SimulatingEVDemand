@@ -5,6 +5,7 @@ import logging
 import pandas as pd
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 
 # Add project root to sys.path
 #sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -12,7 +13,7 @@ import pickle
 from EVforecasterModules import config as cfg
 from EVforecasterModules.data_loaders import data_loader_end_to_end
 from EVforecasterModules.charging_logic import charging_logic
-from EVforecasterModules.StatisticalTesting import simulate
+from EVforecasterModules.StatisticalTesting import simulate, plot_demand, plot_R2
 from EVforecasterModules.pilots import demand_curves_ECA
 
 print(cfg.root_folder)
@@ -162,6 +163,13 @@ class EVforecaster:
                                 ECA_overlay = None):
         
         df = self.df.copy()
+
+        # Loading labels for plotting
+
+        with open(self.results_folder + f'/x.pkl', 'rb') as f:
+            x = pickle.load(f)
+        with open(self.results_folder + f'/x_labels.pkl', 'rb') as f:
+            x_labels = pickle.load(f)
         
         results_matrix, sim_times = simulate(N_sims=N_sims,
                                             home_shift=home_shift,
@@ -181,14 +189,20 @@ class EVforecaster:
 
         logging.info(f"Final post-simulation results matrix shape: {results_matrix.shape}")
 
+        # Creating paths for plots and results
+        array_path = self.results_folder + experiment_name + ".pkl"
+        plot_path = self.plots_folder + experiment_name + ".pdf"
+
+        # If no ECA overlay
         if ECA_overlay is None:
 
-            # Plot and Save
+            logging.info(f"ECA not required")
 
-            # Return results
-            return results_matrix, sim_times
-        
+            logging.info(f"Generating plot and saving to: {plot_path}")
 
+            plot_demand(results_matrix=results_matrix, x=x, x_labels=x_labels)
+
+            plt.savefig(plot_path, format="pdf")
 
         # Add ECA overlay if desired
 
@@ -233,34 +247,47 @@ class EVforecaster:
 
                 ## HERE APPLY THE ECA overlay
 
+                logging.info(f"Y_eca shape: {y_ECA.shape}")
+
                 logging.debug(f"ECA shape: {y_ECA.shape}. ECA type: {type(y_ECA)}")
 
-                ## Load labels
+                logging.info(f"Generating plot and saving to: {plot_path}. ECA required")
 
-                with open(self.results_folder + f'/x.pkl', 'rb') as f:
-                    x = pickle.load(f)
-                with open(self.results_folder + f'/x_labels.pkl', 'rb') as f:
-                    x_labels = pickle.load(f)
+                plt.subplot(2,1,1)
+
+                plot_demand(results_matrix=results_matrix, x=x, x_labels=x_labels, ECA_data=y_ECA)
+
+                ### HERE WE MUST GENERATE R_2 also + comparison tables to CSV??
+
+                # Re-shaping ECA data
+
+                y_ECA = y_ECA.reshape(1, -1)
+
+                logging.info(f"Y_eca shape: {y_ECA.shape}")
+
+                plt.subplot(2,1,2)
+
+                plot_R2(results_matrix=results_matrix, ECA_data=y_ECA)
+
+                plt.savefig(plot_path, format="pdf")
 
             if not os.path.isfile(ECA_path):
                 raise FileNotFoundError(f"{ECA_name} not found in /data directory.\n Please download Electric Chargepoint Analysis data \n from 'https://www.gov.uk/government/statistics/electric-chargepoint-analysis-2017-domestics' \n and move inside /data")
 
+        ### SAVING RESULTS
 
-            
+        logging.info(f"saving results to {array_path}")
 
-
-
-
-
-
-
-
-
-
+        with open(array_path, "wb") as f:
+            pickle.dump(results_matrix, f)
         
         return results_matrix
     
+    def run_experiment(experiment1_r2_path, experiment2_r2_path):
+        pass
+
+
 
 test = EVforecaster(travel_years=[2017])
 
-test.generate_forecasts(N_sims=2, weeks= list(range(1,3)), home_shift=60, ECA_overlay=list(range(39,48)))
+test.generate_forecasts(N_sims=100, weeks= list(range(1,53)), home_shift=60, ECA_overlay=list(range(39,53)), experiment_name="100_simulations_weeks_1-52_homeshift=60")

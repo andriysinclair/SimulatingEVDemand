@@ -87,63 +87,68 @@ def apply_ECA_overlay():
     pass
 
 
-def return_R2(results_matrix, ECA_data, N_sims, home_shift, suffix=""):
+def return_R2(results_matrix, ECA_data):
         # Results for an RSS for each time slot for each simulation
         RSS = np.sum((results_matrix - ECA_data) ** 2, axis=1)
 
-        logging.debug(f"RSS shape: {RSS.shape}")
+        logging.info(f"RSS shape: {RSS.shape}")
 
-        TSS = np.sum((ECA_data - np.mean(ECA_data, axis=1, keepdims=True)) ** 2, axis=1)
+        TSS = np.sum((ECA_data - np.mean(ECA_data, keepdims=True)) ** 2)
 
-        logging.debug(f"TSS shape: {TSS.shape}")
+        logging.info(f"TSS shape: {TSS.shape}")
 
         R_2 = 1 - RSS / TSS
-        logging.debug(f"R² (first 15): {R_2[:15]}")
-
-        # Save R² values
-        with open(results_folder + f'/R_2_{N_sims}_3D_homeshift={home_shift}{suffix}.pkl', 'wb') as f:
-            pickle.dump(R_2, f)
+        logging.info(f"R² (first 15): {R_2[:15]}")
 
         logging.info(f"R_2 shape (weeks, simulations): {R_2.shape}")
+
         return R_2
 
-def plot_demand_R2(results_matrix, ECA_data, x, x_labels, week, N_sims, home_shift, R_2, plots_folder, suffix=""):
-
-    week_keys = list(range(39,53)) + ["overall"]
-    matrix_index_values = list(range(0, 16))
-
-    week_map = dict(zip(week_keys, matrix_index_values))
-
-    logging.info(week_map)
+def plot_demand(results_matrix, x, x_labels, ECA_data=None):
 
     # Plot simulation vs ECA + R² distribution only for overall plot
-    mean_curve = np.mean(results_matrix, axis=2)[week_map[week],:]
-    lower_bound = np.percentile(results_matrix, 2.5, axis=2)[week_map[week],:]
-    upper_bound = np.percentile(results_matrix, 97.5, axis=2)[week_map[week],:]
+    mean_curve = np.mean(results_matrix, axis=0)
+    lower_bound = np.percentile(results_matrix, 2.5, axis=0)
+    upper_bound = np.percentile(results_matrix, 97.5, axis=0)
+
 
     plt.figure(figsize=(15, 6))
 
-    # Demand curve
+    # Demand curve - plot just for simulation
     plt.subplot(2, 1, 1)
     plt.plot(x, mean_curve, label="Simulation Mean", color="blue")
-    plt.plot(x, ECA_data[week_map[week], :, 0], label="Electric Chargepoint Analysis 2017", linestyle="--", color="orange")
     plt.fill_between(x, lower_bound, upper_bound, color='lightblue', alpha=0.7, label='95% CI')
     plt.ylabel('Demand (kWh/5min)/EV')
     plt.xticks(ticks=range(0, len(x_labels), 72), labels=x_labels[::72], rotation=45)
     plt.grid()
+
+    if ECA_data is not None:
+        plt.plot(x, ECA_data, label="Electric Chargepoint Analysis 2017", linestyle="--", color="orange")
+    
+    
+    plt.tight_layout()
     plt.legend()
+
+
+    '''
+    ### MOVE To DIFFERENT FUNCTION ###
 
     # R² histogram
     plt.subplot(2, 1, 2)
-    sns.histplot(R_2[-1,:], kde=True, bins=10, color='steelblue')
+
+    '''
+
+def plot_R2(results_matrix, ECA_data):
+
+    R_2 = return_R2(results_matrix=results_matrix, ECA_data=ECA_data)
+
+    sns.histplot(R_2, kde=True, bins=10, color='steelblue')
     plt.xlabel('R²')
     plt.ylabel('Density')
     plt.grid()
-
     plt.tight_layout()
-    plot_path = plots_folder + f"sim_plot_{N_sims}_3D_homeshift{home_shift}{suffix}.pdf"
-    logging.info(f"Saved plot to {plot_path}")
-    plt.savefig(plot_path, format="pdf")
+
+
 
 def violin_plot(Model1, Model2):
     pass
