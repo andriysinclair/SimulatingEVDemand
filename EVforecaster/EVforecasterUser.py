@@ -61,7 +61,10 @@ class EVforecaster:
         """
         __init__ 
 
-        Initialises EVforecaster class
+        Initialises EVforecaster class. Loads and merges dataset using raw UK-NTS files from UK data service. 
+        Travel parameters must be a list containing the desired travel years for which to use for the simulation.
+        Even if simulation is desired for single travel year, i.e. 2017 then the entry must be [2017] rather than
+        2017.
 
         Args:
             travel_years (list): List of travel years to use for simulation, if using a single year please input a list with a single entry
@@ -72,7 +75,7 @@ class EVforecaster:
         Raises:
             FileNotFoundError: If the NTS-UK datasets do not exist in the /data folder
         """        
-        
+   
         # This is the dataset merged and filtered on travel years
         self.dataset_name = f"{travel_years[0]}-{travel_years[-1]}-merged.pkl"
         self.data_folder = data_folder
@@ -163,7 +166,8 @@ class EVforecaster:
                                 public_charger_likelihood= cfg.charger_likelihood["other"],
                                 min_stop_time_to_charge = cfg.min_stop_time_to_charge,
                                 SOC_charging_prob = cfg.SOC_charging_prob,
-                                ECA_overlay = None):
+                                ECA_overlay = None,
+                                plot = True):
         
         results_dict = {}  
 
@@ -219,6 +223,7 @@ class EVforecaster:
         # If no ECA overlay
         if ECA_overlay is None:
 
+
             logging.info(f"ECA not required")
 
             logging.info(f"Generating plot and saving to: {plot_path}")
@@ -226,6 +231,8 @@ class EVforecaster:
             plot_demand(results_matrix=results_matrix, x=x, x_labels=x_labels)
 
             plt.savefig(plot_path, format="pdf")
+
+
 
         # Add ECA overlay if desired
 
@@ -238,9 +245,9 @@ class EVforecaster:
             ECA_path = os.path.join(self.data_folder, ECA_name)
 
             if os.path.isfile(ECA_path):
-                print(f"{ECA_name} successfully found in /data directory. Proceeding...")
+                logging.info(f"{ECA_name} successfully found in /data directory. Proceeding...")
 
-                print(f"Checking for previously created ECA overlay for weeks: {ECA_overlay[0]} - {ECA_overlay[-1]}")
+                logging.info(f"Checking for previously created ECA overlay for weeks: {ECA_overlay[0]} - {ECA_overlay[-1]}")
 
                 # Check if ECA overlay file exists
 
@@ -310,23 +317,9 @@ class EVforecaster:
         with open(array_path, "wb") as f:
             pickle.dump(results_dict, f)
 
+        return results_dict
+
     
-    def run_experiment(experiment1_r2_path, experiment2_r2_path):
 
-        with open(experiment1_r2_path, "rb") as f:
-            results_dict1 = pickle.load(f)
-
-        with open(experiment2_r2_path, "rb") as f:
-            results_dict2 = pickle.load(f)
-
-        # Extract R2 from experiment 1
-
-        R2_1 =  results_dict1["R2"]
-        R2_2 =  results_dict2["R2"]
-
-        #  Run experiments
-
-        stat, p = mannwhitneyu(R2_1, R2_2, alternative='two-sided')
-        logging.info(f"Mann–Whitney U test statistic: {stat:.4f}, p-value: {p:.4f}")
-
-
+if __name__ == "__main__":
+    test = EVforecaster(travel_years=2017)
