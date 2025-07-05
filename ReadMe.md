@@ -1,103 +1,44 @@
-# TravNet
+## 📚 Table of Contents
 
-## An RNN-based Car Trip Simulator
+1. [Overview](#overview)  
+2. [Features](#features)  
+3. [Installation](#installation)  
+4. [Quickstart](#quickstart)  
+   - [Import and Instantiate](#1-import-and-instantiate)  
+   - [Run Simulations](#2-run-simulations)  
+5. [Repository Structure](#repository-structure)  
+6. [Assumptions & Configuration](#assumptions--configuration)  
+7. [Validation](#validation)  
+8. [References](#references)
+9. [Citation](#citation)  
+10. [License](#license)
 
-This travel simulator is built using the UK National Travel Survey (link in the acknowledgements). It uses descriptive features on the individual, vehicle, day, household and region level to generate a weekly (Monday - Sunday) car travel diary for an individual. We generate the following trip-level variables for:
+# Overview
 
-* `i_id`: The unique identifier.
-* `DoW`: The day of the week on which the trip took place (1-7).
-* `TripNum`: The trip's order for a given day.
-* `TripStart`: The start time of the trip (minutes from midnight).
-* `Duration`: Duration of the trip (minutes).
-* `Distance`: Distance of the trip (miles).
-* `Purpouse`: Purpouse of the trip (1 of 23 categories):
-    * 1: Commuting
-    * 2: Business
-    * 3: Other work
-    * 4: Education
-    * 5: Food shopping
-    * 6: Non food shopping
-    * 7: Personal business medical
-    * 8: Personal business eat / drink
-    * 9: Personal business other
-    * 10: Visit friends at private home
-    * 11: Eat / drink with friends
-    * 12: Other social
-    * 13: Entertain / public activity
-    * 14: Sport: participate
-    * 15: Holiday: base
-    * 16: Day trip
-    * 17: Just walk
-    * 18: Other non-escort
-    * 19: Escort commuting
-    * 20: Escort business & other work
-    * 21: Escort education
-    * 22: Escort shopping / personal business
-    * 23: Escort home (not own) & other escort
-    
+`EVforecaster` uses the 2002 - 2023 UK National Travel Survey (UK-NTS) to generate domestic EV charging demand curves. The UK-NTS contains trip level data, such as: trip start time, trip end time, trip distance, trip location, etc. Although the majority of trips in the UK-NTS are likely to have been carried out by combustion engine vehicles (CEVs), this simulation-based approach assumes that electric vehicles (EVs) carried out the trips. Taking the trips as given, `EVforecaster` tries to model where, at what time and for how long EVs would charge to be able to successfully undertake the trips. Once this is modelled, the information is aggregated to plot weekly demand curves at 5-minute granularity. The simulation algorithms requires the following information:
 
-## Getting Started
+* Each trip location is randomly allocated a charger and a charging rate (kW/hour) based on a distribution.
+* Each individual is allocated a car, which is modelled as a battery size and efficiency due. Based on a distribution.
+* An individual's charging decision is modelled using the probabilistic function developed in Pareschi et al. (2020).
+* Most simulation parameters (such as those mentioned above) are centrally defined in `config.py`.
 
-### Installing
+It is capable of creating annual weekly demand curves that aggregate all the weeks of the year, weekly demand curves for specific seasons (defined by week ranges) or weekly demand curves for each week of the year.
 
-**From Source**
-1. Clone the repository.
-2. Open terminal.
-3. If using conda:
-    1. `cd path_to_repo`
-    2. `conda env create -f environment.yml`
-    3. `conda activate EVforecaster`
-4. If using pip:
-    1. `cd path_to_repo`
-    2. `pip install -e .`
+Additionally, it is able to compare weekly demand curves for the largest domestic UK-based EV charging pilot, the 2017 Electric Chargepoint Analysis (ECA) (DfT, 2018). It plots the mean simulated demand curve (and standard errors) alongside the ECA and a histrogram of $R^2$ values below.
 
-**From PyPi**
+Various experiments can be ran to test model performance, as compared to the ECA, for different parameter configurations. Some are available in `showcase.ipynb`
 
-#TBC
+# Installation
 
-### Executing program
-
-`analysis.ipynb` is a brief showcase of all the major functions.
-
-**From a Python session:**
-1. Run ` from Modules.TravNetUser import TravNet` to import the `TravNet` class.
-2. Create an instance `travnet = TravNet()`
-3. Run `travnet.generate_travel_data(N)`, where `N` is the number of individuals for whom you want to generate weekly travel schedules.
-4. if you run `travnet.generate_travel_data(N, return_df=True)`This returns travel schedules (pd.DataFrame) in wide and long format and saves the long format in `/Results_N` as a `.pkl`. If `return_df=False` (default) then the long format is just saved as a pkl.
-5. Run `travnet.output_aggregate_stats()` to print aggregate stats from real and generated data.
-6. Run `travnet.plot_histograms()` to plot histograms, which will save to `/Plots`.
-
-### Developer
-
-**Directory Structure**
-
-.
-├── Analysis.ipynb               # Jupyter notebook showcasing main features
-├── Models/                      # Trained models
-├── Modules/                     # Core Python modules and configs
-├── Plots/                       # Visualizations of losses and histograms
-├── Results/                     # Pickled result outputs
-├── data/                        # Raw and processed NTS data
-├── tensors/                     # Processed tensors for model training
-├── environment.yml              # Conda environment specification
-├── pyproject.toml               # Project metadata
-└── ReadMe.md                    # This file
-
-## Version History
-
-* v0.0.1 - Pre-release
-    * Neural network running, but no rationality conditions to resemble actual travel data.
-    * See [v0.0.1](https://github.com/andriysinclair/TravNet/releases/tag/v0.0.1) 
-* v0.0.2 - Pre-release
-    * Added rationality conditions.
-    * See [v0.0.2](https://github.com/andriysinclair/TravNet/releases/tag/v0.0.2) 
-* 0.0.3 - Pre-release
-    * Matrix based losses
-    * See [v0.0.3](https://github.com/andriysinclair/TravNet/releases/tag/v0.0.3) 
-
-## Acknowledgments
-
-**Dataset**
-Department for Transport. (2023). National Travel Survey. [data series]. 8th Release. UK Data Service. SN: 2000037, DOI: http://doi.org/10.5255/UKDA-Series-2000037
+* From GitHub
 
 
+* From PyPi
+
+TBC
+
+
+# References
+
+- Pareschi, G., et al. (2020). *Are travel surveys a good basis for EV models?* Applied Energy, 275.
+- Department for Transport (2018). Electric Chargepoint Analysis 2017: Domestics. Statistical release. UK Government. https://www.gov.uk/government/statistics/electric-vehicle-chargepoint-analysis-2017
